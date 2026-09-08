@@ -148,7 +148,7 @@ public class LabelBundleLasts extends LabelBundle {
                 else if (ParkourTickListener.sidestep == 1) {
                     str = "WDWA";
                 }
-                else if (ParkourTickListener.sidestep == 2 && CyvClientConfig.getBoolean("markInSidestep", true)) {
+                else if (ParkourTickListener.sidestep == 2 && CyvClientConfig.getString("markDisplay", "Sidestep").equals("Sidestep"))  {
                     str = "Mark " + ParkourTickListener.sidestepTime + "t";
                 }
 

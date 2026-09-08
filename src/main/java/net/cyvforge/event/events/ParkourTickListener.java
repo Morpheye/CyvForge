@@ -556,7 +556,7 @@ public class ParkourTickListener {
                 }
             }
             else if (lastGroundMoveTime > -1 && !locked && lastJumpTime == 0) {
-                if (lastSneakTime == -1) lastTiming = "Burst " + (lastGroundMoveTime) + " ticks";
+                if (lastSneakTime == -1) lastTiming = "Burst " + (lastGroundMoveTime - 1) + " ticks";
                 else if (lastSneakTime > -1) lastTiming = "Burstjam " + (lastGroundMoveTime) + " ticks";
                 else lastTiming = "HH " + (lastGroundMoveTime) + " ticks";
 
@@ -611,7 +611,7 @@ public class ParkourTickListener {
                 long diff = (moveTimestamp - jumpTimestamp) / 1000000;
                 String msTxt = (showMS && diff >= 0 && diff < 1000) ? " (" + diff + "ms)" : "";
 
-                if (CyvClientConfig.getBoolean("markInSidestep", true)) {
+                if (CyvClientConfig.getString("markDisplay", "Sidestep").equals("Sidestep")) {
                     sidestep = 2;
                     sidestepTime = airtime;
                 } else {

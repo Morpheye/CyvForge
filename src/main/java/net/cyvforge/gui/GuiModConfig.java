@@ -156,6 +156,7 @@ public class GuiModConfig extends CyvGui {
         // macro
         PanelUtils.addSpace(panels, this);
         PanelUtils.addToggle(panels, "smoothMacro", "Smooth Macro", this);
+        PanelUtils.addToggle(panels, "macroShortcutsRequireMod", "Shortcuts Require TAB/ALT", this);
         PanelUtils.addSwitcher(panels, "macroHUDColor", "Macro HUD Color", new String[] {"Default", "Color1", "Color2"}, this);
         PanelUtils.addToggle(panels, "macroClipEnabled", "Macro Clip", this);
         PanelUtils.addDependantSlider(panels, "macroClipTicks", "Number of ticks to clip", 1, 500, "macroClipEnabled", this);

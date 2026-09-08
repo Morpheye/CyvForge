@@ -98,13 +98,13 @@ public class LandingBlock {
         }
 
         //THIS IS TEMPORARY. I will find a better solution in the future
-        if (isBox && (block instanceof BlockLadder || block instanceof BlockVine || block instanceof BlockSlime || block instanceof net.minecraft.block.BlockIce ||
+        if (isBox && (block instanceof BlockLadder || block instanceof BlockVine || block instanceof BlockSlime || block instanceof BlockIce ||
                 block instanceof net.minecraft.block.BlockPackedIce)) {
             AxisAlignedBB playerHitbox = mc.thePlayer.getEntityBoundingBox();
 
             double playerX = playerHitbox.maxX - playerHitbox.minX;
             double playerZ = playerHitbox.maxZ - playerHitbox.minZ;
-            AxisAlignedBB box = new AxisAlignedBB(playerX/2 + pos.getX(), pos.getY(), playerZ/2 + pos.getZ(),
+            AxisAlignedBB box = new AxisAlignedBB(playerX/2 + pos.getX(), pos.getY() - 0.02, playerZ/2 + pos.getZ(),
                     1-playerX/2 + pos.getX(), 1 + pos.getY(), 1-playerZ/2 + pos.getZ());
             this.bb = new AxisAlignedBB[] {box};
 

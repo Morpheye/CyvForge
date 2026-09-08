@@ -15,6 +15,10 @@ public class SignCommandListener {
     @SubscribeEvent
     public void onSignInteract(PlayerInteractEvent event) {
         if (event.action == PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK) {
+            if (event.entityPlayer.isSneaking()) {
+                return;
+            }
+
             Minecraft mc = Minecraft.getMinecraft();
             if (mc.theWorld == null || mc.thePlayer == null) return;
 

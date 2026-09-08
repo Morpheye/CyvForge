@@ -38,7 +38,7 @@ public class CyvClientConfig {
         configFields.put("frameBased", new ConfigValue<Boolean>(false));
         configFields.put("WADdisplay", new ConfigValue<Boolean>(false));
         configFields.put("simpleBlip", new ConfigValue<Boolean>(false));
-        configFields.put("markInSidestep", new ConfigValue<Boolean>(true));
+        configFields.put("markDisplay", new ConfigValue<String>("Sidestep"));
         configFields.put("detectWobble", new ConfigValue<Boolean>(false));
         configFields.put("detectStrafejam", new ConfigValue<Boolean>(false));
         configFields.put("strafejamJamOnly", new ConfigValue<Boolean>(true));
@@ -55,6 +55,8 @@ public class CyvClientConfig {
         configFields.put("macroHUDColor", new ConfigValue<String>("Default"));
         configFields.put("macroClipEnabled", new ConfigValue<Boolean>(false));
         configFields.put("macroClipTicks", new ConfigValue<Integer>(100));
+        configFields.put("recentMacros", new ConfigValue<String>(""));
+        configFields.put("macroShortcutsRequireMod", new ConfigValue<Boolean>(true));
 
         // inertia listener
         configFields.put("inertiaEnabled", new ConfigValue<Boolean>(false));

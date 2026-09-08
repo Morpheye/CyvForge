@@ -23,11 +23,11 @@ public class GuiHUDConfig {
                 PanelUtils.addToggle(panels, "detectWobble", "Wobble Timing", screen);
                 PanelUtils.addToggle(panels, "detectStrafejam", "Strafejam Timing", screen);
                 PanelUtils.addDependantToggle(panels, "strafejamJamOnly", "Strafejam Jam only", "detectStrafejam", screen);
-                PanelUtils.addSwitcher(panels, "markInSidestep", "Mark Display", new String[] {"Sidestep", "Timing"}, screen);
+                PanelUtils.addSwitcher(panels, "markDisplay", "Mark Display", new String[] {"Sidestep", "Timing"}, screen);
                 break;
 
             case "labelLastSidestep":
-                PanelUtils.addSwitcher(panels, "markInSidestep", "Mark Display", new String[] {"Sidestep", "Timing"}, screen);
+                PanelUtils.addSwitcher(panels, "markDisplay", "Mark Display", new String[] {"Sidestep", "Timing"}, screen);
                 break;
 
             case "labelLastInput":

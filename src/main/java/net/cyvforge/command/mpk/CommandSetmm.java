@@ -87,7 +87,7 @@ public class CommandSetmm extends CyvCommand {
             }
             else {
                 if (player.onGround) {
-                    BlockPos pos = new BlockPos(player.posX, player.posY, player.posZ);
+                    BlockPos pos = new BlockPos(player.posX, player.posY - 0.05, player.posZ);
                     List<AxisAlignedBB> list = CyvForge.getHitbox(pos, mc.theWorld);
 
                     net.minecraft.block.Block block = mc.theWorld.getBlockState(pos).getBlock();

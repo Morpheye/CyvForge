@@ -94,10 +94,6 @@ public class ConfigLoader {
             mod.saveConfigFields();
         }
 
-        if (!isFinal) {
-            return;
-        }
-
         try {
             FileWriter writer = new FileWriter(configFile, false);
 
