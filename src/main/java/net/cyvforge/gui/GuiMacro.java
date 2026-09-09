@@ -117,12 +117,18 @@ public class GuiMacro extends CyvGui {
                         // transisition fix for when i added RMB
                         if (line.size() == 9) {
                             macroLine.rmb = false;
-                            macroLine.yawField.setText("" + Double.valueOf(line.get(7)));
-                            macroLine.pitchField.setText("" + Double.valueOf(line.get(8)));
+
+                            double yVal = Double.valueOf(line.get(7));
+                            double pVal = Double.valueOf(line.get(8));
+                            macroLine.yawField.setText(yVal == 0.0 ? "" : String.valueOf(yVal));
+                            macroLine.pitchField.setText(pVal == 0.0 ? "" : String.valueOf(pVal));
                         } else {
                             macroLine.rmb = Boolean.valueOf(line.get(7));
-                            macroLine.yawField.setText("" + Double.valueOf(line.get(8)));
-                            macroLine.pitchField.setText("" + Double.valueOf(line.get(9)));
+
+                            double yVal = Double.valueOf(line.get(8));
+                            double pVal = Double.valueOf(line.get(9));
+                            macroLine.yawField.setText(yVal == 0.0 ? "" : String.valueOf(yVal));
+                            macroLine.pitchField.setText(pVal == 0.0 ? "" : String.valueOf(pVal));
                         }
 
                         macroLines.add(macroLine);
@@ -536,14 +542,19 @@ public class GuiMacro extends CyvGui {
                 Keyboard.isKeyDown(Keyboard.KEY_RMENU) ||
                 Keyboard.isKeyDown(Keyboard.KEY_TAB);
 
+        if (isMod && selectedIndex == -1 && !macroLines.isEmpty()) {
+            selectedIndex = 0;
+            focusedColumn = 0;
+            updateFocusAndScroll();
+        }
+
         boolean anyFieldFocused = false;
         if (selectedIndex != -1 && selectedIndex < macroLines.size()) {
             MacroLine l = macroLines.get(selectedIndex);
             if (l.yawField.isFocused() || l.pitchField.isFocused()) anyFieldFocused = true;
         }
 
-        boolean canTriggerAction = isMod || (!requireMod && !anyFieldFocused);
-        if (canTriggerAction) {
+        if (isMod || (!requireMod && !anyFieldFocused)) {
             if (keyCode == Keyboard.KEY_Z) { // Alt+Z = Undo
                 undo();
                 return;
@@ -597,28 +608,40 @@ public class GuiMacro extends CyvGui {
                 }
                 return;
             }
-            if (keyCode == Keyboard.KEY_LEFT || (isMod && keyCode == Keyboard.KEY_A)) {
+            if ((!isMod && keyCode == Keyboard.KEY_LEFT) || (isMod && keyCode == Keyboard.KEY_A)) {
                 if (focusedColumn > 0) {
                     focusedColumn--;
                     updateFocusAndScroll();
+                    return;
                 }
-                return;
             }
-            if (keyCode == Keyboard.KEY_RIGHT || (isMod && keyCode == Keyboard.KEY_D)) {
+
+            if ((!isMod && keyCode == Keyboard.KEY_RIGHT) || (isMod && keyCode == Keyboard.KEY_D)) {
                 if (focusedColumn < 2) {
                     focusedColumn++;
                     updateFocusAndScroll();
+                    return;
                 }
-                return;
             }
         }
 
         if (this.selectedIndex > -1 && this.selectedIndex < macroLines.size()) {
             MacroLine l = this.macroLines.get(this.selectedIndex);
 
-            if (l.yawField.isFocused()) l.yawField.textboxKeyTyped(typedChar, keyCode);
-            else if (l.pitchField.isFocused()) l.pitchField.textboxKeyTyped(typedChar, keyCode);
-            else {
+            if (l.yawField.isFocused() || l.pitchField.isFocused()) {
+                GuiTextField activeField = l.yawField.isFocused() ? l.yawField : l.pitchField;
+
+                boolean isNumber = (typedChar >= '0' && typedChar <= '9');
+                boolean isSymbol = (typedChar == '.' || typedChar == '-');
+                boolean isControl = (keyCode == Keyboard.KEY_BACK || keyCode == Keyboard.KEY_DELETE ||
+                        keyCode == Keyboard.KEY_LEFT || keyCode == Keyboard.KEY_RIGHT ||
+                        keyCode == Keyboard.KEY_HOME || keyCode == Keyboard.KEY_END);
+
+                if (isNumber || isSymbol || isControl) {
+                    activeField.textboxKeyTyped(typedChar, keyCode);
+                }
+                return;
+            } else if (focusedColumn == 0 && !isMod) {
                 if (keyCode == mc.gameSettings.keyBindForward.getKeyCode()) {
                     l.w = !l.w;
                 } else if (keyCode == mc.gameSettings.keyBindLeft.getKeyCode()) {
@@ -789,8 +812,8 @@ public class GuiMacro extends CyvGui {
             this.yawField.setEnableBackgroundDrawing(false);
             this.pitchField.setEnableBackgroundDrawing(false);
 
-            this.yawField.setText("0.0");
-            this.pitchField.setText("0.0");
+            this.yawField.setText("");
+            this.pitchField.setText("");
         }
 
         public void drawEntry(int slotIndex, int scroll, int mouseX, int mouseY, boolean isSelected) {

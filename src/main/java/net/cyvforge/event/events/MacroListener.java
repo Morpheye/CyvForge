@@ -106,7 +106,7 @@ public class MacroListener {
                 //undo partialtick turns
                 for (int i = partialYawChange.size() - 1; i >= 0; i--) {
                     player.rotationYaw -= partialYawChange.get(i);
-                    player.rotationPitch -= - partialPitchChange.get(i);
+                    player.rotationPitch -= partialPitchChange.get(i);
                 }
 
                 player.rotationYaw += yawChange;
