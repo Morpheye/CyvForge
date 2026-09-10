@@ -33,7 +33,7 @@ allprojects {
     }
 }
 
-version = "1.9.1"
+version = "1.9.2"
 group= "net.cyvforge" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "cyvforge"
 

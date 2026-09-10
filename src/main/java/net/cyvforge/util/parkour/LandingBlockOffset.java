@@ -107,14 +107,21 @@ public class LandingBlockOffset {
 
         if (leftWallOffset == 0) {
             AxisAlignedBB checkBB = new AxisAlignedBB(b.bb[i].maxX, b.bb[i].maxY, b.bb[i].minZ, b.bb[i].maxX + 0.1, b.bb[i].maxY + 0.5, b.bb[i].maxZ);
-            if (!mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, checkBB).isEmpty()) {
-                leftWallOffset = -fullPlayerSize;
+            for (AxisAlignedBB collisionBB : mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, checkBB)) {
+                if (collisionBB.minX >= b.bb[i].maxX && collisionBB.minY < b.bb[i].maxY) {
+                    leftWallOffset = -fullPlayerSize;
+                    break;
+                }
             }
         }
+
         if (rightWallOffset == 0) {
             AxisAlignedBB checkBB = new AxisAlignedBB(b.bb[i].minX - 0.1, b.bb[i].maxY, b.bb[i].minZ, b.bb[i].minX, b.bb[i].maxY + 0.5, b.bb[i].maxZ);
-            if (!mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, checkBB).isEmpty()) {
-                rightWallOffset = -fullPlayerSize;
+            for (AxisAlignedBB collisionBB : mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, checkBB)) {
+                if (collisionBB.maxX <= b.bb[i].minX && collisionBB.minY < b.bb[i].maxY) {
+                    rightWallOffset = -fullPlayerSize;
+                    break;
+                }
             }
         }
 
@@ -141,14 +148,21 @@ public class LandingBlockOffset {
 
         if (frontWallOffset == 0) {
             AxisAlignedBB checkBB = new AxisAlignedBB(b.bb[i].minX, b.bb[i].maxY, b.bb[i].maxZ, b.bb[i].maxX, b.bb[i].maxY + 0.5, b.bb[i].maxZ + 0.1);
-            if (!mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, checkBB).isEmpty()) {
-                frontWallOffset = -fullPlayerSize;
+            for (AxisAlignedBB collisionBB : mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, checkBB)) {
+                if (collisionBB.minZ >= b.bb[i].maxZ && collisionBB.minY < b.bb[i].maxY) {
+                    frontWallOffset = -fullPlayerSize;
+                    break;
+                }
             }
         }
+
         if (backWallOffset == 0) {
             AxisAlignedBB checkBB = new AxisAlignedBB(b.bb[i].minX, b.bb[i].maxY, b.bb[i].minZ - 0.1, b.bb[i].maxX, b.bb[i].maxY + 0.5, b.bb[i].minZ);
-            if (!mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, checkBB).isEmpty()) {
-                backWallOffset = -fullPlayerSize;
+            for (AxisAlignedBB collisionBB : mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, checkBB)) {
+                if (collisionBB.maxZ <= b.bb[i].minZ && collisionBB.minY < b.bb[i].maxY) {
+                    backWallOffset = -fullPlayerSize;
+                    break;
+                }
             }
         }
 
