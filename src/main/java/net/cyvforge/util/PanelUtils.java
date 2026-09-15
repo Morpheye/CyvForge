@@ -97,6 +97,14 @@ public class PanelUtils {
         });
     }
 
+    public static void addOrDependantToggle(ArrayList<ConfigPanel> panels, String key, String name, String dep1, String dep2, CyvGui screen) {
+        panels.add(new ConfigPanelToggle(panels, key, name, screen) {
+            @Override public boolean isEnabled() {
+                return CyvClientConfig.getBoolean(dep1, false) || CyvClientConfig.getBoolean(dep2, false);
+            }
+        });
+    }
+
     // ToggleMode
     public static void addToggleMode(ArrayList<ConfigPanel> panels, String key, String name, String s1, String s2, CyvGui screen) {
         panels.add(new ConfigPanelToggleModes(panels, key, name, s1, s2, screen));

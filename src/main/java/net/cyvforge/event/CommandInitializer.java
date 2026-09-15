@@ -26,7 +26,7 @@ public class CommandInitializer  {
         cyvCommands.addAll(Arrays.asList(new CyvCommand[]{ //config commands
                 new CommandHelp(), new CommandColor1(), new CommandColor2(), new CommandColors(), new CommandDf(),
                 new CommandConfig(), new CommandGui(), new CommandInertia(), new CommandPositionChecker(),
-                new CommandResetGui()
+                new CommandFullbright(), new CommandResetGui(), new CommandTogglesprint()
         }));
 
         cyvCommands.addAll(Arrays.asList(new CyvCommand[]{ //config commands
@@ -41,8 +41,6 @@ public class CommandInitializer  {
         }));
 
         cyvCommands.add(new CommandMacro());
-
-        cyvCommands.add(new CommandFullbright());
 
         ClientCommandHandler.instance.registerCommand(new DefaultCommand());
     }

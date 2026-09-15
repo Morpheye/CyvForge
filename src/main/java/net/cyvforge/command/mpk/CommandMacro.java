@@ -62,6 +62,8 @@ public class CommandMacro extends CyvCommand {
 
         String nextRecName = MacroFileInit.getNextAvailableName("Rec");
         CyvClientConfig.set("currentMacro", nextRecName);
+        GuiMacro.addToRecent(nextRecName);
+
         net.cyvforge.event.ConfigLoader.save(CyvForge.config, false);
         MacroFileInit.swapFile(nextRecName);
 
@@ -90,6 +92,8 @@ public class CommandMacro extends CyvCommand {
 
         String nextClipName = MacroFileInit.getNextAvailableName("Clip");
         CyvClientConfig.set("currentMacro", nextClipName);
+        GuiMacro.addToRecent(nextClipName);
+
         net.cyvforge.event.ConfigLoader.save(CyvForge.config, false);
         MacroFileInit.swapFile(nextClipName);
 

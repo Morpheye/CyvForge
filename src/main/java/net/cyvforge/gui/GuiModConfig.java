@@ -159,36 +159,36 @@ public class GuiModConfig extends CyvGui {
         PanelUtils.addToggle(panels, "macroShortcutsRequireMod", "Shortcuts Require TAB/ALT", this);
         PanelUtils.addSwitcher(panels, "macroHUDColor", "Macro HUD Color", new String[] {"Default", "Color1", "Color2"}, this);
         PanelUtils.addToggle(panels, "macroClipEnabled", "Macro Clip", this);
-        PanelUtils.addDependantSlider(panels, "macroClipTicks", "Number of ticks to clip", 1, 500, "macroClipEnabled", this);
+        PanelUtils.addDependantSlider(panels, "macroClipTicks", "- Number of ticks to clip", 1, 500, "macroClipEnabled", this);
 
         // inertia
         PanelUtils.addSpace(panels, this);
         PanelUtils.addToggle(panels, "inertiaEnabled", "Inertia Listener Enabled", this);
-        PanelUtils.addDependantSlider(panels, "inertiaTick", "Air tick", 1, 12, "inertiaEnabled", this);
-        PanelUtils.addDependantDecimal(panels, "inertiaMin", "Min Speed", "inertiaEnabled", this);
-        PanelUtils.addDependantDecimal(panels, "inertiaMax", "Max Speed", "inertiaEnabled", this);
-        PanelUtils.addDependantSwitcher(panels, "inertiaAxis", "Inertia Axis", new Character[] {'x', 'z'}, "inertiaEnabled", this);
-        PanelUtils.addDependantSwitcher(panels, "inertiaGroundType", "Ground Type", new String[] {"normal", "ice", "slime"}, "inertiaEnabled", this);
+        PanelUtils.addDependantSlider(panels, "inertiaTick", "- Air tick", 1, 12, "inertiaEnabled", this);
+        PanelUtils.addDependantDecimal(panels, "inertiaMin", "- Min Speed", "inertiaEnabled", this);
+        PanelUtils.addDependantDecimal(panels, "inertiaMax", "- Max Speed", "inertiaEnabled", this);
+        PanelUtils.addDependantSwitcher(panels, "inertiaAxis", "- Inertia Axis", new Character[] {'x', 'z'}, "inertiaEnabled", this);
+        PanelUtils.addDependantSwitcher(panels, "inertiaGroundType", "- Ground Type", new String[] {"normal", "ice", "slime"}, "inertiaEnabled", this);
 
         // position checker
         PanelUtils.addSpace(panels, this);
         PanelUtils.addToggle(panels, "positionCheckerEnabled", "Position Checker Enabled", this);
-        PanelUtils.addDependantSlider(panels, "positionCheckerTick", "Air tick", 1, 12, "positionCheckerEnabled", this);
-        PanelUtils.addDependantDecimal(panels, "positionCheckerRadius", "Radius", "positionCheckerEnabled", this);
+        PanelUtils.addDependantSlider(panels, "positionCheckerTick", "- Air tick", 1, 12, "positionCheckerEnabled", this);
+        PanelUtils.addDependantDecimal(panels, "positionCheckerRadius", "- Radius", "positionCheckerEnabled", this);
         PanelUtils.addDependantAction(panels, "Copy current position with radius", () -> {
             net.cyvforge.command.CommandPositionChecker.setMark();
             this.updatePanels();
         }, "positionCheckerEnabled", this) ;
-        PanelUtils.addDependantDecimal(panels, "positionCheckerMinX", "Min X", "positionCheckerEnabled", this);
-        PanelUtils.addDependantDecimal(panels, "positionCheckerMaxX", "Max X", "positionCheckerEnabled", this);
-        PanelUtils.addDependantDecimal(panels, "positionCheckerMinZ", "Min Z", "positionCheckerEnabled", this);
-        PanelUtils.addDependantDecimal(panels, "positionCheckerMaxZ", "Max Z", "positionCheckerEnabled", this);
-        PanelUtils.addDependantToggle(panels, "positionCheckerZNeo", "Z Neo Mode", "positionCheckerEnabled", this);
+        PanelUtils.addDependantDecimal(panels, "positionCheckerMinX", "- Min X", "positionCheckerEnabled", this);
+        PanelUtils.addDependantDecimal(panels, "positionCheckerMaxX", "- Max X", "positionCheckerEnabled", this);
+        PanelUtils.addDependantDecimal(panels, "positionCheckerMinZ", "- Min Z", "positionCheckerEnabled", this);
+        PanelUtils.addDependantDecimal(panels, "positionCheckerMaxZ", "- Max Z", "positionCheckerEnabled", this);
+        PanelUtils.addDependantToggle(panels, "positionCheckerZNeo", "- Z Neo Mode", "positionCheckerEnabled", this);
 
         // checkpoints
         PanelUtils.addSpace(panels, this);
         PanelUtils.addToggle(panels, "antiCP", "Anti-Checkpoint", this);
-        PanelUtils.addDependantSlider(panels, "antiCPDelay", "Anti-CP Delay (s)", 1, 10, "antiCP", this);
+        PanelUtils.addDependantSlider(panels, "antiCPDelay", "- Anti-CP Delay (s)", 1, 10, "antiCP", this);
         PanelUtils.addToggle(panels, "singleplayerCheckpointsEnabled", "Custom Checkpoints Enabled", this);
         PanelUtils.addSlider(panels, "generatorDyeColor", "Generator Dye Color", 0, 15, this);
         PanelUtils.addSlider(panels, "generatorItemSlot", "Generator Hotbar Slot", 0, 8, this);

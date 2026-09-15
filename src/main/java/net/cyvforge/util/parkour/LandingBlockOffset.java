@@ -27,6 +27,18 @@ public class LandingBlockOffset {
 
         boolean isForcedTick = (b.targetTick != -1);
 
+        if (!b.mode.equals(LandingMode.enter)) {
+            AxisAlignedBB playerHitbox = Minecraft.getMinecraft().thePlayer.getEntityBoundingBox();
+            double playerHeight = playerHitbox.maxY - playerHitbox.minY;
+            for (int j = 0; j < b.bb.length; j++) {
+                if (j == i) continue;
+                if (b.bb[j].maxY <= b.bb[i].maxY) continue;
+                if (b.bb[j].minY >= b.bb[i].maxY + playerHeight) continue;
+                if (b.bb[j].minX <= b.bb[i].minX && b.bb[j].maxX >= b.bb[i].maxX &&
+                        b.bb[j].minZ <= b.bb[i].minZ && b.bb[j].maxZ >= b.bb[i].maxZ) return;
+            }
+        }
+
         if (!b.isLiquid && !isForcedTick && y < b.bb[i].minY) return; //below bottom y
         else if (!b.isLiquid && !isForcedTick && y < b.bb[i].maxY && b.mode.equals(LandingMode.enter)) { //inside block on y
             xOffset = checkX(x, b, i);

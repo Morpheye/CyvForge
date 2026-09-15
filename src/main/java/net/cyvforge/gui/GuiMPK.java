@@ -12,6 +12,7 @@ import net.cyvforge.util.GuiUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiTextField;
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
 
 import java.io.IOException;
@@ -28,6 +29,10 @@ public class GuiMPK extends CyvGui {
     float scroll = 0;
     int maxScroll = 0;
     boolean scrollClicked = false;
+
+    float settingsVScroll = 0;
+    float settingsScroll = 0;
+    int settingsMaxScroll = 0;
 
     GuiTextField searchBar;
     SubButton guiEditButton;
@@ -136,6 +141,13 @@ public class GuiMPK extends CyvGui {
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         super.drawDefaultBackground();
 
+        int pWidth = 150;
+        if (selectedSettingsElement != null) {
+            int nameWidth = fontRendererObj.getStringWidth(selectedSettingsElement.getDisplayName()) + 40;
+            if (nameWidth > pWidth) pWidth = nameWidth;
+        }
+        int shiftX = (selectedSettingsElement != null) ? (pWidth / 2 + 10) : 0;
+
         maxScroll = (int) Math.max(0, Minecraft.getMinecraft().fontRendererObj.FONT_HEIGHT * 2 * Math.ceil(labelLines.size()) - (sizeY-20));
         if (scroll > maxScroll) scroll = maxScroll;
         if (scroll < 0) scroll = 0;
@@ -144,47 +156,69 @@ public class GuiMPK extends CyvGui {
             int leftMargin = 15;
             int gapBetween = 15;
 
-            int mainListLeft = sr.getScaledWidth() / 2 - sizeX / 2 - 15;
+            int mainListLeft = sr.getScaledWidth() / 2 - sizeX / 2 - 15 + shiftX;
 
             int pX = leftMargin;
-            int pWidth = mainListLeft - gapBetween - pX;
+
+            int pWidthFinal = mainListLeft - gapBetween - pX;
+            if (pWidthFinal < 100) pWidthFinal = 100;
 
             int pY = sr.getScaledHeight() / 2 - sizeY / 2 - 4;
             int pHeight = sizeY + 8;
 
-            GuiUtils.drawRoundedRect(pX, pY, pX + pWidth, pY + pHeight, 5, CyvForge.theme.background1);
-            GuiUtils.drawRectOutline(pX, pY, pX + pWidth, pY + pHeight, CyvForge.theme.border2);
+            GuiUtils.drawRoundedRect(pX, pY, pX + pWidthFinal, pY + pHeight, 5, CyvForge.theme.background1);
+            GuiUtils.drawRectOutline(pX, pY, pX + pWidthFinal, pY + pHeight, CyvForge.theme.border2);
 
-            GuiUtils.drawCenteredString(selectedSettingsElement.getDisplayName(), pX + pWidth / 2, pY + 10, 0xFFFFFFFF, true);
+
+            GuiUtils.drawCenteredString(selectedSettingsElement.getDisplayName(), pX + pWidthFinal / 2, pY + 10, 0xFFFFFFFF, true);
+
+            int sf = sr.getScaleFactor();
+            GL11.glEnable(GL11.GL_SCISSOR_TEST);
+            GL11.glScissor(pX * sf, (mc.displayHeight - (pY + pHeight) * sf), pWidthFinal * sf, (pHeight - 20) * sf);
 
             if (settingsPanels.isEmpty()) {
-                GuiUtils.drawCenteredString("No settings", pX + pWidth / 2, pY + 40, 0xFFFFFFFF, true);
+                GuiUtils.drawCenteredString("No settings", pX + pWidthFinal / 2, pY + 40, 0xFFFFFFFF, true);
             } else {
+                settingsMaxScroll = Math.max(0, (settingsPanels.size() * 20) - (pHeight + 15));
+
+                if (settingsMaxScroll > 0) {
+                    int barAreaHeight = pHeight - 40;
+                    int barHeight = Math.max(10, (int) ((float) barAreaHeight / (settingsPanels.size() * 20) * barAreaHeight));
+                    int barY = pY + 35 + (int) ((float) settingsScroll / settingsMaxScroll * (barAreaHeight - barHeight));
+                    net.minecraft.client.gui.Gui.drawRect(pX + 2, barY, pX + 3, barY + barHeight, 0xFFFFFFFF);
+                }
                 for (int i = 0; i < settingsPanels.size(); i++) {
                     ConfigPanel p = settingsPanels.get(i);
-                    p.setPos(pX + 10, pY + 30 + (i * 20), pWidth - 20);
-                    p.draw(mouseX, mouseY, 0);
+                    p.setPos(pX + 10, pY + 30 + (i * 20) - (int)settingsScroll, pWidthFinal - 20);
+                    p.draw(mouseX, mouseY, (int)settingsScroll);
                 }
             }
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
         }
 
         // draw main background
-        GuiUtils.drawRoundedRect(sr.getScaledWidth()/2 - sizeX/2 - 15, sr.getScaledHeight()/2 - sizeY/2 - 4,
-                sr.getScaledWidth()/2 + sizeX/2 + 14, sr.getScaledHeight()/2 + sizeY/2 + 4, 5, CyvForge.theme.background1);
+        GuiUtils.drawRoundedRect(sr.getScaledWidth()/2 - sizeX/2 - 15 + shiftX, sr.getScaledHeight()/2 - sizeY/2 - 4,
+                sr.getScaledWidth()/2 + sizeX/2 + 14 + shiftX, sr.getScaledHeight()/2 + sizeY/2 + 4, 5, CyvForge.theme.background1);
 
-        int centerx = sr.getScaledWidth() * sr.getScaleFactor() / 2;
+        int centerx = sr.getScaledWidth() * sr.getScaleFactor() / 2 + (shiftX * sr.getScaleFactor());
         int centery = sr.getScaledHeight() * sr.getScaleFactor() / 2;
         int scaleFactor = sr.getScaleFactor();
 
-        GuiUtils.drawCenteredString("Labels:", sr.getScaledWidth()/2, 5 + sr.getScaledHeight()/2 - sizeY/2, 0xFFFFFFFF, true);
+        GuiUtils.drawCenteredString("Labels:", sr.getScaledWidth()/2 + shiftX, 5 + sr.getScaledHeight()/2 - sizeY/2, 0xFFFFFFFF, true);
 
         // draw side button background
-        final int BUTTON_X = sr.getScaledWidth() / 2 + sizeX / 2 + 50;
+        final int BUTTON_X = sr.getScaledWidth() / 2 + sizeX / 2 + 50 + shiftX;
         final int BUTTON_SIZE = 100;
         final int BUTTON_COUNT = 5;
         GuiUtils.drawRoundedRect(BUTTON_X - 4, sr.getScaledHeight()/2 - sizeY/2 - 4,
                 BUTTON_X + BUTTON_SIZE + 4, sr.getScaledHeight()/2 - sizeY/2 + BUTTON_COUNT * 20,
                 5, CyvForge.theme.background1);
+
+        this.guiEditButton.setX(BUTTON_X);
+        this.settingsButton.setX(BUTTON_X);
+        this.macroButton.setX(BUTTON_X);
+        this.presetsButton.setX(BUTTON_X);
+        this.chatMacrosButton.setX(BUTTON_X);
 
         // draw buttons
         this.guiEditButton.draw(mouseX, mouseY);
@@ -195,6 +229,8 @@ public class GuiMPK extends CyvGui {
 
         //draw searchbar
         ColorTheme theme = CyvForge.theme;
+        this.searchBar.xPosition = sr.getScaledWidth()/2-sizeX/2 - 12 + shiftX;
+
         boolean isHovered = this.searchBar.isFocused() ||
                 (mouseX > searchBar.xPosition - 3 &&
                         mouseX < searchBar.xPosition + searchBar.width  + 3&&
@@ -232,7 +268,7 @@ public class GuiMPK extends CyvGui {
 
         int index = 0;
         for (LabelLine l : labelLines) {
-            int yHeight = (int) ((index + 1) * mc.fontRendererObj.FONT_HEIGHT*2 - scroll + (sr.getScaledHeight()/2 - sizeY/2));
+            l.xStart = sr.getScaledWidth()/2 - sizeX/2 - 5 + shiftX;
             l.drawEntry(index, (int) scroll, mouseX, mouseY, index == this.selectedIndex);
             index++;
         }
@@ -250,13 +286,13 @@ public class GuiMPK extends CyvGui {
         if (maxScroll == 0) amount = top;
 
         int color = CyvForge.theme.border2;
-        if (mouseX > sr.getScaledWidth()/2+sizeX/2+2 && mouseX < sr.getScaledWidth()/2+sizeX/2+8 &&
+        if (mouseX > sr.getScaledWidth()/2+sizeX/2+2+shiftX && mouseX < sr.getScaledWidth()/2+sizeX/2+8+shiftX &&
                 mouseY > amount && mouseY < amount+scrollbarHeight) {
             color = CyvForge.theme.border1;
         }
 
-        GuiUtils.drawRoundedRect(sr.getScaledWidth()/2+sizeX/2+2, amount,
-                sr.getScaledWidth()/2+sizeX/2+8, amount+scrollbarHeight, 3, color);
+        GuiUtils.drawRoundedRect(sr.getScaledWidth()/2+sizeX/2+2+shiftX, amount,
+                sr.getScaledWidth()/2+sizeX/2+8+shiftX, amount+scrollbarHeight, 3, color);
 
     }
 
@@ -265,8 +301,14 @@ public class GuiMPK extends CyvGui {
         int eventDWheel = GuiHandler.scrollBuffer;
         GuiHandler.scrollBuffer = 0;
 
-        if (eventDWheel != 0 && (!scrollClicked || !org.lwjgl.input.Mouse.isButtonDown(0))) {
-            vScroll -= eventDWheel * 0.05;
+        if (eventDWheel != 0) {
+            if (selectedSettingsElement != null && Mouse.getEventX() * sr.getScaledWidth() / mc.displayWidth < sr.getScaledWidth() / 2) {
+                settingsVScroll -= eventDWheel * 0.05;
+            } else {
+                if (!scrollClicked || !org.lwjgl.input.Mouse.isButtonDown(0)) {
+                    vScroll -= eventDWheel * 0.05;
+                }
+            }
         }
 
         super.handleMouseInput();
@@ -276,14 +318,21 @@ public class GuiMPK extends CyvGui {
     protected void mouseClicked(int mouseX, int mouseY, int mouseEvent) throws IOException {
         if (selectedSettingsElement != null) {
             for (ConfigPanel p : settingsPanels) {
-                if (p.mouseInBounds(mouseX, mouseY)) {
-                    p.mouseClicked(mouseX, mouseY, mouseEvent);
+                if (p.mouseInBounds(mouseX, mouseY + (int)settingsScroll)) {
+                    p.mouseClicked(mouseX, mouseY + (int)settingsScroll, mouseEvent);
                     return;
                 }
             }
         }
 
         super.mouseClicked(mouseX, mouseY, mouseEvent);
+
+        int pWidth = 150;
+        if (selectedSettingsElement != null) {
+            int nameWidth = fontRendererObj.getStringWidth(selectedSettingsElement.getDisplayName()) + 40;
+            if (nameWidth > pWidth) pWidth = nameWidth;
+        }
+        int shiftX = (selectedSettingsElement != null) ? (pWidth / 2 + 10) : 0;
 
         int scrollbarHeight = (int) ((sizeY - 8)/(0.01*maxScroll+1));
         int top = sr.getScaledHeight()/2-sizeY/2+4+15;
@@ -292,7 +341,7 @@ public class GuiMPK extends CyvGui {
         if (maxScroll == 0) amount = top;
 
         // check scrollbar
-        if (mouseX > sr.getScaledWidth()/2+sizeX/2+2 && mouseX < sr.getScaledWidth()/2+sizeX/2+8 &&
+        if (mouseX > sr.getScaledWidth()/2+sizeX/2+2+shiftX && mouseX < sr.getScaledWidth()/2+sizeX/2+8+shiftX &&
                 mouseY > amount && mouseY < amount+scrollbarHeight) {
             this.scrollClicked = true;
             return;
@@ -326,7 +375,7 @@ public class GuiMPK extends CyvGui {
         }
 
         // check labels
-        if (mouseX < sr.getScaledWidth()/2-this.sizeX/2 || mouseX > sr.getScaledWidth()/2+this.sizeX/2
+        if (mouseX < sr.getScaledWidth()/2-this.sizeX/2+shiftX || mouseX > sr.getScaledWidth()/2+this.sizeX/2+shiftX
                 || mouseY < sr.getScaledHeight()/2-this.sizeY/2 || mouseY > sr.getScaledHeight()/2+this.sizeY/2) {
             return;
         }
@@ -344,6 +393,13 @@ public class GuiMPK extends CyvGui {
 
     @Override
     public void mouseClickMove(int x, int y, int mouseButton, long time) {
+        int pWidth = 150;
+        if (selectedSettingsElement != null) {
+            int nameWidth = fontRendererObj.getStringWidth(selectedSettingsElement.getDisplayName()) + 40;
+            if (nameWidth > pWidth) pWidth = nameWidth;
+        }
+        int shiftX = (selectedSettingsElement != null) ? (pWidth / 2 + 10) : 0;
+
         if (this.scrollClicked) {
             int scrollbarHeight = (int) ((sizeY - 8)/(0.01*maxScroll+1));
             int top = sr.getScaledHeight()/2-sizeY/2+4+15;
@@ -365,6 +421,11 @@ public class GuiMPK extends CyvGui {
         this.scroll += this.vScroll;
         this.vScroll *= 0.75;
 
+        // smooth scrolling for label settings
+        this.settingsScroll += this.settingsVScroll;
+        this.settingsVScroll *= 0.75;
+        if (settingsScroll > settingsMaxScroll) settingsScroll = settingsMaxScroll;
+        if (settingsScroll < 0) settingsScroll = 0;
     }
 
     @Override
@@ -403,7 +464,7 @@ public class GuiMPK extends CyvGui {
                 int gearY = yHeight + (this.height / 2);
 
                 boolean isGearHovered = mouseX >= gearX - 4 && mouseX <= gearX + 4 &&
-                                        mouseY >= gearY - 5 && mouseY <= gearY + 5;
+                        mouseY >= gearY - 5 && mouseY <= gearY + 5;
 
                 int gearColor;
                 if (selectedSettingsElement == label) {

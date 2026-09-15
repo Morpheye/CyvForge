@@ -25,6 +25,8 @@ public class ConfigPanelIntegerSlider implements ConfigPanel {
     private int sizeX;
     private int sizeY;
 
+    private boolean dragging = false;
+
     public ConfigPanelIntegerSlider(ArrayList<ConfigPanel> array, String configOption, String displayString, int minValue, int maxValue, CyvGui screenIn) {
         this.index = array.size();
         this.minValue = minValue;
@@ -45,6 +47,15 @@ public class ConfigPanelIntegerSlider implements ConfigPanel {
     @Override
     public void draw(int mouseX, int mouseY, int scroll) {
         boolean active = isEnabled();
+
+        if (active && this.dragging) {
+            if (org.lwjgl.input.Mouse.isButtonDown(0)) {
+                this.mouseDragged(mouseX, mouseY + scroll);
+            } else {
+                this.dragging = false;
+            }
+        }
+
         int textColor = active ? 0xFFFFFFFF : 0xFF777777;
         int bgColor;
         int sliderColor;
@@ -62,8 +73,11 @@ public class ConfigPanelIntegerSlider implements ConfigPanel {
         //bg
         GuiUtils.drawRoundedRect(this.xPosition+this.sizeX/2, this.yPosition-scroll, this.xPosition+this.sizeX, this.yPosition+this.sizeY-scroll, 3, bgColor);
         //slider
-        GuiUtils.drawRoundedRect(this.xPosition+this.sizeX/2+(int)(sizeX/2 * (sliderValue-minValue)/(maxValue-minValue))-3, this.yPosition-1-scroll,
-                this.xPosition+this.sizeX/2+(int)(sizeX/2 * (sliderValue-minValue)/(maxValue-minValue))+3, this.yPosition+this.sizeY+1-scroll, 1, sliderColor);
+        float valRatio = (float)(sliderValue - minValue) / (maxValue - minValue);
+        int thumbX = this.xPosition + this.sizeX / 2 + (int)((sizeX / 2) * valRatio);
+
+        GuiUtils.drawRoundedRect(thumbX - 3, this.yPosition-1-scroll,
+                thumbX + 3, this.yPosition+this.sizeY+1-scroll, 1, sliderColor);
         //amount
         GuiUtils.drawCenteredString(" "+this.sliderValue, this.xPosition+this.sizeX*3/4, this.yPosition+this.sizeY/2-Minecraft.getMinecraft().fontRendererObj.FONT_HEIGHT/2+1-scroll, textColor, active);
 
@@ -100,6 +114,7 @@ public class ConfigPanelIntegerSlider implements ConfigPanel {
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
         if (mouseInBounds(mouseX, mouseY) && mouseButton == 0) {
+            this.dragging = true;
             mouseDragged(mouseX, mouseY);
         }
     }
