@@ -11,6 +11,7 @@ import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
 
+import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -36,6 +37,8 @@ public class GuiMacroList extends CyvGui {
     private int renamingIndex = -1;
     private GuiTextField renameField;
 
+    private SubButton openFolderBtn;
+
     public GuiMacroList(GuiMacro parent) {
         super("Macro List");
         this.parent = parent;
@@ -47,6 +50,10 @@ public class GuiMacroList extends CyvGui {
         if (sizeY > height - 40) sizeY = height - 40;
         int x = width / 2 - sizeX / 2;
         int y = height / 2 - sizeY / 2;
+
+        this.openFolderBtn = new SubButton("Open Folder", x + (sizeX / 2) - 50, y + sizeY - 25);
+        this.openFolderBtn.setSizeX(100);
+        this.openFolderBtn.setEnabled(true);
 
         this.searchField = new GuiTextField(0, fontRendererObj, x + 25, y + 46, sizeX - 50, 12);
         this.searchField.setEnableBackgroundDrawing(false);
@@ -81,7 +88,7 @@ public class GuiMacroList extends CyvGui {
                 .filter(name -> name.toLowerCase().contains(query))
                 .collect(Collectors.toList());
 
-        int listAreaHeight = sizeY - 80;
+        int listAreaHeight = sizeY - 100;
         maxScroll = Math.max(0, (filteredMacros.size() * 22) - listAreaHeight);
     }
 
@@ -107,7 +114,7 @@ public class GuiMacroList extends CyvGui {
 
         // List
         int listY = y + 70;
-        int listHeight = sizeY - 80;
+        int listHeight = sizeY - 100;
         int sf = sr.getScaleFactor();
 
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
@@ -118,17 +125,27 @@ public class GuiMacroList extends CyvGui {
             int rowHeight = 18;
             int rowMargin = 15;
 
-            if (rowY + 20 > listY && rowY < listY + listHeight) {
-                boolean hovered = mouseX >= x + rowMargin && mouseX <= x + sizeX - rowMargin && mouseY >= rowY && mouseY <= rowY + rowHeight;
+            if (rowY + rowHeight > listY && rowY < listY + listHeight) {
+                boolean hovered = mouseX >= x + rowMargin && mouseX <= x + sizeX - rowMargin && mouseY >= rowY && mouseY <= rowY + rowHeight && mouseY <= listY + listHeight;
 
                 GuiUtils.drawRoundedRect(x + rowMargin, rowY, x + sizeX - rowMargin, rowY + rowHeight, 2, (hovered || deleteConfirmIndex == i || renamingIndex == i) ? 0x60FFFFFF : 0x20000000);
 
                 if (renamingIndex == i) {
                     this.renameField.xPosition = x + rowMargin + 5;
                     this.renameField.yPosition = rowY + 5;
+                    this.renameField.width = sizeX - (2 * rowMargin) - 60;
                     this.renameField.drawTextBox();
                 } else {
-                    fontRendererObj.drawString(filteredMacros.get(i), x + rowMargin + 5, rowY + 5, 0xFFFFFFFF);
+                    String mName = filteredMacros.get(i);
+                    int maxTextWidth = sizeX - (2 * rowMargin) - 55;
+
+                    String displayName = fontRendererObj.trimStringToWidth(mName, maxTextWidth);
+
+                    if (fontRendererObj.getStringWidth(mName) > maxTextWidth) {
+                        displayName = fontRendererObj.trimStringToWidth(mName, maxTextWidth - 7) + "...";
+                    }
+
+                    fontRendererObj.drawString(displayName, x + rowMargin + 5, rowY + 5, 0xFFFFFFFF);
                 }
 
                 // Buttons
@@ -142,23 +159,25 @@ public class GuiMacroList extends CyvGui {
                         GuiUtils.drawRoundedRect(btnCopyX, rowY + 1, btnDelX + 15, rowY + 17, 2, confHover ? 0xFFFF0000 : 0xFFCC0000);
                         fontRendererObj.drawString("Sure?", btnCopyX + 2, rowY + 5, 0xFFFFFFFF);
                     } else if (renamingIndex != i) {
-                        boolean renameHover  = mouseX >= btnRenX && mouseX <= btnRenX + 15 && mouseY >= rowY + 1 && mouseY <= rowY + 17;
+                        boolean renameHover = mouseX >= btnRenX && mouseX <= btnRenX + 15 && mouseY >= rowY + 1 && mouseY <= rowY + 17;
                         fontRendererObj.drawString("R", btnRenX + 4, rowY + 5, renameHover ? 0xFFFFAA00 : 0xAAFFFFFF);
 
-                        boolean copyHover  = mouseX >= btnCopyX && mouseX <= btnCopyX + 15 && mouseY >= rowY + 1 && mouseY <= rowY + 17;
+                        boolean copyHover = mouseX >= btnCopyX && mouseX <= btnCopyX + 15 && mouseY >= rowY + 1 && mouseY <= rowY + 17;
                         fontRendererObj.drawString("C", btnCopyX + 4, rowY + 5, copyHover ? 0xFF00FFFF : 0xAAFFFFFF);
 
-                        boolean deleteHover  = mouseX >= btnDelX && mouseX <= btnDelX + 15 && mouseY >= rowY + 1 && mouseY <= rowY + 17;
-                        fontRendererObj.drawString("X", btnDelX + 4, rowY + 5, deleteHover  ? 0xFFFF0000 : 0xAAFFFFFF);
+                        boolean deleteHover = mouseX >= btnDelX && mouseX <= btnDelX + 15 && mouseY >= rowY + 1 && mouseY <= rowY + 17;
+                        fontRendererObj.drawString("X", btnDelX + 4, rowY + 5, deleteHover ? 0xFFFF0000 : 0xAAFFFFFF);
                     }
                 }
             }
         }
         GL11.glDisable(GL11.GL_SCISSOR_TEST);
 
+        this.openFolderBtn.draw(mouseX, mouseY);
+
         // Scrollbar
         if (maxScroll > 0) {
-            int sbX = x + sizeX - 5;
+            int sbX = x + sizeX - 4;
             int sbH = Math.max(15, (int) ((float) listHeight * listHeight / (maxScroll + listHeight)));
             int sbY = listY + (int) (scroll / maxScroll * (listHeight - sbH));
             Gui.drawRect(sbX, listY, sbX + 2, listY + listHeight, 0x20FFFFFF);
@@ -193,10 +212,16 @@ public class GuiMacroList extends CyvGui {
     @Override
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
         searchField.mouseClicked(mouseX, mouseY, mouseButton);
+
+        if (this.openFolderBtn.clicked(mouseX, mouseY, mouseButton)) {
+            openMacrosFolder();
+            return;
+        }
+
         int x = width / 2 - sizeX / 2;
         int y = height / 2 - sizeY / 2;
         int listY = y + 70;
-        int listHeight = sizeY - 80;
+        int listHeight = sizeY - 100;
 
         if (mouseY >= listY && mouseY <= listY + listHeight) {
             for (int i = 0; i < filteredMacros.size(); i++) {
@@ -304,6 +329,20 @@ public class GuiMacroList extends CyvGui {
             CyvClientConfig.set("currentMacro", "macro");
         }
         loadFiles();
+    }
+
+    private void openMacrosFolder() {
+        try {
+            File folder = MacroFileInit.macroFile.getParentFile();
+            if (!folder.exists()) {
+                folder.mkdirs();
+            }
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(folder);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void selectMacro(String name) {

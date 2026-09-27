@@ -35,7 +35,7 @@ public class TurnHUD extends LabelBundle {
             @Override
             public int getWidth() {
                 if (!master.isEnabled || CyvClientConfig.getBoolean("splitTurningHUD", false)) return 0;
-                return getLabelWidth("12", true) + 20;
+                return getLabelWidth("12", true);
             }
 
             @Override

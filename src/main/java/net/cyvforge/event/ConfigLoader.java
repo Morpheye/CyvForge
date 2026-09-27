@@ -41,25 +41,19 @@ public class ConfigLoader {
     }
 
     public static void read(CyvClientConfig cfg) {
-        try {
-            BufferedReader bufferedreader = new BufferedReader(new InputStreamReader(new FileInputStream(configFile)));
-            String s = "";
+        try (BufferedReader bufferedreader = new BufferedReader(new InputStreamReader(new FileInputStream(configFile)))) {
+            String s;
             while ((s = bufferedreader.readLine()) != null) {
-                String[] parts = s.split("=");
+                String[] parts = s.split("=", 2);
                 try {
-                    if (cfg.configFields.containsKey(parts[0])) {
+                    if (parts.length == 2 && cfg.configFields.containsKey(parts[0])) {
                         cfg.configFields.get(parts[0]).set(parts[1]);
-                    } else {
-                        //key doesn't exist
                     }
                 } catch (Exception e) {
                     LogManager.getLogger().info("Config option \"" + Arrays.toString(parts) + "\" failed to load.");
                 }
 
             }
-
-            bufferedreader.close();
-
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -75,7 +69,12 @@ public class ConfigLoader {
         }
 
         for (DraggableHUDElement mod : HUDManager.registeredRenderers) {
-            mod.readConfigFields();
+            try {
+                mod.readConfigFields();
+            } catch (Exception e) {
+                LogManager.getLogger().warn("HUD element " + mod.getClass().getSimpleName()
+                        + " threw while reading its fields, using defaults for it", e);
+            }
         }
 
         //decimal precision
@@ -91,25 +90,33 @@ public class ConfigLoader {
 
     public static void save(CyvClientConfig cfg, boolean isFinal) {
         for (DraggableHUDElement mod : HUDManager.registeredRenderers) {
-            mod.saveConfigFields();
+            try {
+                mod.saveConfigFields();
+            } catch (Exception e) {
+                LogManager.getLogger().warn("HUD element " + mod.getClass().getSimpleName()
+                        + " threw while saving its fields, skipping it", e);
+            }
+        }
+
+        StringBuilder sb = new StringBuilder();
+        cfg.configFields.forEach((name, data) -> {
+            String value = (data.value != null) ? data.value.toString() : "";
+            sb.append(name).append('=').append(value).append('\n');
+        });
+
+        File tmp = new File(PATH, NAME + ".tmp");
+        try (FileWriter writer = new FileWriter(tmp, false)) {
+            writer.write(sb.toString());
+        } catch (IOException e) {
+            LogManager.getLogger().error("Failed to save the configuration to the temporary file – the old config.txt remains unchanged.", e);
+            return;
         }
 
         try {
-            FileWriter writer = new FileWriter(configFile, false);
-
-            cfg.configFields.forEach((name, data) -> {
-                try {
-                    writer.write(name + "=" + data.value.toString() + "\n");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-
+            java.nio.file.Files.move(tmp.toPath(), configFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             LogManager.getLogger().info("CyvForge config saved!");
-            writer.close();
-
         } catch (IOException e) {
-            e.printStackTrace();
+            LogManager.getLogger().error("Failed to replace config.txt", e);
         }
     }
 }

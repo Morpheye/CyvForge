@@ -206,11 +206,18 @@ public class GuiMacro extends CyvGui {
             if (renamingIndex == i) {
                 this.renameField.xPosition = recentX + 5;
                 this.renameField.yPosition = rowY + 4;
+                this.renameField.width = recentWidth - 65;
                 this.renameField.drawTextBox();
             } else {
-                fontRendererObj.drawString(mName, recentX + 5, rowY + 4, 0xFFFFFFFF);
-            }
+                int maxTextWidth = recentWidth - 55;
+                String displayName = fontRendererObj.trimStringToWidth(mName, maxTextWidth);
 
+                if (fontRendererObj.getStringWidth(mName) > maxTextWidth) {
+                    displayName = fontRendererObj.trimStringToWidth(mName, maxTextWidth - 7) + "...";
+                }
+
+                fontRendererObj.drawString(displayName, recentX + 5, rowY + 4, 0xFFFFFFFF);
+            }
             if (rowHovered || deleteConfirmIndex == i) {
                 int btnRenX = recentX + recentWidth - 54;  // R
                 int btnCopyX = recentX + recentWidth - 36; // C
@@ -224,17 +231,14 @@ public class GuiMacro extends CyvGui {
 
                     // R (Rename)
                     boolean renameHover = mouseX >= btnRenX && mouseX <= btnRenX + 15 && mouseY >= rowY + 1 && mouseY <= rowY + 14;
-                    if (renameHover) GuiUtils.drawRoundedRect(btnRenX, rowY + 1, btnRenX + 15, rowY + 14, 2, 0x80FFAA00);
                     fontRendererObj.drawString("R", btnRenX + 5, rowY + 4, renameHover ? 0xFFFFAA00 : 0xAAFFFFFF);
 
                     // C (Copy)
                     boolean copyHover = mouseX >= btnCopyX && mouseX <= btnCopyX + 15 && mouseY >= rowY + 1 && mouseY <= rowY + 14;
-                    if (copyHover) GuiUtils.drawRoundedRect(btnCopyX, rowY + 1, btnCopyX + 15, rowY + 14, 2, 0x807FB6C4);
                     fontRendererObj.drawString("C", btnCopyX + 5, rowY + 4, copyHover ? 0xFF00FFFF : 0xAAFFFFFF);
 
                     // X (Delete)
                     boolean deleteHover = mouseX >= btnDelX && mouseX <= btnDelX + 15 && mouseY >= rowY + 1 && mouseY <= rowY + 14;
-                    if (deleteHover) GuiUtils.drawRoundedRect(btnDelX, rowY + 1, btnDelX + 15, rowY + 14, 2, 0x80FF0000);
                     fontRendererObj.drawString("X", btnDelX + 5, rowY + 4, deleteHover ? 0xFFFF0000 : 0xAAFFFFFF);
                 }
             }
@@ -594,6 +598,8 @@ public class GuiMacro extends CyvGui {
                 Keyboard.isKeyDown(Keyboard.KEY_RMENU) ||
                 Keyboard.isKeyDown(Keyboard.KEY_TAB);
 
+        boolean isCtrl = Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL);
+
         if (isMod && selectedIndex == -1 && !macroLines.isEmpty()) {
             selectedIndex = 0;
             focusedColumn = 0;
@@ -606,7 +612,7 @@ public class GuiMacro extends CyvGui {
             if (l.yawField.isFocused() || l.pitchField.isFocused()) anyFieldFocused = true;
         }
 
-        if (isMod || (!requireMod && !anyFieldFocused)) {
+        if (!isCtrl && (isMod || (!requireMod && !anyFieldFocused))) {
             if (keyCode == Keyboard.KEY_Z) { // Alt+Z = Undo
                 undo();
                 return;
@@ -682,6 +688,11 @@ public class GuiMacro extends CyvGui {
 
             if (l.yawField.isFocused() || l.pitchField.isFocused()) {
                 GuiTextField activeField = l.yawField.isFocused() ? l.yawField : l.pitchField;
+
+                if (isCtrl) {
+                    activeField.textboxKeyTyped(typedChar, keyCode);
+                    return;
+                }
 
                 boolean isNumber = (typedChar >= '0' && typedChar <= '9');
                 boolean isSymbol = (typedChar == '.' || typedChar == '-');

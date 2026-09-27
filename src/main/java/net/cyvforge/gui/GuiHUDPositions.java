@@ -74,7 +74,8 @@ public class GuiHUDPositions extends CyvGui {
             GuiUtils.drawRectOutline(pos.getAbsoluteX(), pos.getAbsoluteY(),
                     pos.getAbsoluteX()+renderer.getWidth(), pos.getAbsoluteY()+renderer.getHeight(), color);
 
-            if (selectedRenderer.isPresent() && selectedRenderer.get() == renderer && renderer.getName().equals("keystrokes")) {
+            if (selectedRenderer.isPresent() && selectedRenderer.get() == renderer &&
+                    (renderer.getName().equals("keystrokes") || renderer.getName().equals("InputHistory"))) {
                 int handleX = pos.getAbsoluteX() + renderer.getWidth() - handleSize;
                 int handleY = pos.getAbsoluteY() + renderer.getHeight() - handleSize;
                 Gui.drawRect(handleX, handleY, handleX + handleSize, handleY + handleSize, 0xFFFFFFFF);
@@ -137,13 +138,25 @@ public class GuiHUDPositions extends CyvGui {
                 DraggableHUDElement renderer = selectedRenderer.get();
                 ScreenPosition pos = renderers.get(renderer);
 
-                int newWidth = x - pos.getAbsoluteX() + (handleSize / 2);
-
-                int finalSize = Math.max(40, Math.min(250, newWidth));
-
-                if (finalSize != CyvClientConfig.getInt("keystrokesSize", 66)) {
-                    CyvClientConfig.set("keystrokesSize", finalSize);
+                if (renderer.getName().equals("keystrokes")) {
+                    int newWidth = x - pos.getAbsoluteX() + (handleSize / 2);
+                    int finalSize = Math.max(40, Math.min(250, newWidth));
+                    if (finalSize != CyvClientConfig.getInt("keystrokesSize", 66)) {
+                        CyvClientConfig.set("keystrokesSize", finalSize);
+                    }
                 }
+                else if (renderer.getName().equals("InputHistory")) {
+                    float currentScale = CyvClientConfig.getInt("ih_size", 100) / 100.0f;
+                    float baseWidth = renderer.getWidth() / currentScale;
+
+                    int newWidth = x - pos.getAbsoluteX();
+                    int finalScale = (int)((newWidth / baseWidth) * 100);
+
+                    finalScale = Math.max(50, Math.min(100, finalScale));
+
+                    CyvClientConfig.set("ih_size", finalScale);
+                }
+
             } else if (selectedRenderer.isPresent()) {
                 if (!selectedRenderer.get().isDraggable) return;
 
@@ -159,7 +172,9 @@ public class GuiHUDPositions extends CyvGui {
         this.prevY = y;
 
         if (mouseButton == 0) { //left-clicked
-            if (selectedRenderer.isPresent() && selectedRenderer.get().getName().equals("keystrokes")) {
+            if (selectedRenderer.isPresent() &&
+                    (selectedRenderer.get().getName().equals("keystrokes") || selectedRenderer.get().getName().equals("InputHistory"))) {
+
                 ScreenPosition pos = renderers.get(selectedRenderer.get());
                 int handleX = pos.getAbsoluteX() + selectedRenderer.get().getWidth() - handleSize;
                 int handleY = pos.getAbsoluteY() + selectedRenderer.get().getHeight() - handleSize;
@@ -199,6 +214,7 @@ public class GuiHUDPositions extends CyvGui {
         for (IRenderer renderer : renderers.keySet()) {
             renderer.save(renderers.get(renderer));
         }
+        net.cyvforge.event.ConfigLoader.save(CyvForge.config, false);
     }
 
     private void adjustBounds(IRenderer renderer, ScreenPosition pos) {

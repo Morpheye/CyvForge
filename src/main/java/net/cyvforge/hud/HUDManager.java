@@ -5,10 +5,7 @@ import net.cyvforge.config.CyvClientConfig;
 import net.cyvforge.gui.GuiMPK;
 import net.cyvforge.gui.GuiModConfig;
 import net.cyvforge.hud.labels.*;
-import net.cyvforge.hud.nonlabels.DirectionHUD;
-import net.cyvforge.hud.nonlabels.KeystrokesHUD;
-import net.cyvforge.hud.nonlabels.TogglesprintHUD;
-import net.cyvforge.hud.nonlabels.TurnHUD;
+import net.cyvforge.hud.nonlabels.*;
 import net.cyvforge.hud.structure.DraggableHUDElement;
 import net.cyvforge.hud.structure.ScreenPosition;
 import net.cyvforge.util.GuiUtils;
@@ -34,6 +31,7 @@ public class HUDManager {
         registeredRenderers.add(new TogglesprintHUD());
         registeredRenderers.add(new KeystrokesHUD());
         registeredRenderers.addAll(new TurnHUD().labels);
+        registeredRenderers.add(new InputHistory());
 
         registeredRenderers.addAll(new LabelBundleCoordinates().labels);
         registeredRenderers.addAll(new LabelBundleHitCoords().labels);

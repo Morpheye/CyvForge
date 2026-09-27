@@ -295,7 +295,7 @@ public class GuiModConfig extends CyvGui {
     public void onGuiClosed() {
         for (ConfigPanel p : this.panels) p.save();
         this.updatePanels();
-
+        net.cyvforge.event.ConfigLoader.save(CyvForge.config, false);
     }
 
     class SubButton {
