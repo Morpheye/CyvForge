@@ -131,7 +131,7 @@ Open the main GUI with **Right Shift**. It lists every HUD element with a search
 | Misc | Blips, Grinds, System Time |
 
 **Good to know**
-- **Yaw** can be rendered per frame instead of per tick, which is required for hard very jumps on some servers as proof.
+- **Yaw** can be rendered per frame instead of per tick, which is required for very hard jumps on some servers as proof.
 
 ### Other HUD elements
 
@@ -321,6 +321,8 @@ lsj(12)                  jump with A on the jump tick
 j wa(11)                 pessi: jump without keys, W only after that
 sj(12, 45, slip=0.8)     jump at yaw 45 from slime
 ```
+
+**Note:** The simulator is only accurate up to around 6 decimals of precision.
 
 ---
 
