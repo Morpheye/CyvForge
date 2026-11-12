@@ -38,6 +38,8 @@ public class CyvClientConfig {
         configFields.put("highlightLanding", new ConfigValue<Boolean>(false));
         configFields.put("highlightLandingCond", new ConfigValue<Boolean>(false));
         configFields.put("momentumPbCancelling", new ConfigValue<Boolean>(false));
+        configFields.put("ignoreWallHit", new ConfigValue<Boolean>(false));
+        configFields.put("lb3DPreview", new ConfigValue<Boolean>(true));
 
         // label specific
         configFields.put("showMilliseconds", new ConfigValue<Boolean>(true));
@@ -48,6 +50,7 @@ public class CyvClientConfig {
         configFields.put("WADdisplay", new ConfigValue<Boolean>(false));
         configFields.put("simpleBlip", new ConfigValue<Boolean>(false));
         configFields.put("markDisplay", new ConfigValue<String>("Sidestep"));
+        configFields.put("timingActiveUpdates", new ConfigValue<Boolean>(false));
         configFields.put("detectWobble", new ConfigValue<Boolean>(false));
         configFields.put("detectStrafejam", new ConfigValue<Boolean>(false));
         configFields.put("strafejamJamOnly", new ConfigValue<Boolean>(true));

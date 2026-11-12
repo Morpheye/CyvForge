@@ -1,6 +1,7 @@
 package net.cyvforge.command.mpk;
 
 import net.cyvforge.CyvForge;
+import net.cyvforge.config.CyvClientConfig;
 import net.cyvforge.event.events.ParkourTickListener;
 import net.cyvforge.util.defaults.CyvCommand;
 import net.cyvforge.util.parkour.LandingAxis;
@@ -36,6 +37,7 @@ public class CommandSetlb extends CyvCommand {
         LandingAxis axis = LandingAxis.both;
         boolean box = false;
         boolean target = false;
+        boolean ignoreWall = CyvClientConfig.getBoolean("ignoreWallHit", false);
         int targetTick = -1;
         for (String s : args) {
             s = s.toLowerCase();
@@ -48,6 +50,7 @@ public class CommandSetlb extends CyvCommand {
             else if (s.equals("enter")) mode = LandingMode.enter;
             else if (s.equals("box")) box = true;
             else if (s.equals("target")) target = true;
+            else if (s.equals("ignorewall") || s.equals("ignorewallhit") || s.equals("nowall") || s.equals("iwh")) ignoreWall = true;
                 //shortcuts
             else if (s.equals("slime") || s.equals("ice") || s.equals("slime/ice")) { box = true; mode = LandingMode.hit; }
             else if (s.equals("ladder") || s.equals("vine") || s.equals("ladder/vine") ) { box = true; mode = LandingMode.enter; }
@@ -83,7 +86,8 @@ public class CommandSetlb extends CyvCommand {
                         return;
                     } else {
                         ParkourTickListener.landingBlock = new LandingBlock(pos, mode, axis, box);
-                        CyvForge.sendChatMessage("Successfully set landing block.");
+                        ParkourTickListener.landingBlock.ignoreWallHit = ignoreWall;
+                        if (!ParkourTickListener.landingBlock.announceLowBlock("landing block")) CyvForge.sendChatMessage("Successfully set landing block.");
                     }
                 } catch (Exception e) {
                     CyvForge.sendChatMessage("Please look at a valid block.");
@@ -111,7 +115,8 @@ public class CommandSetlb extends CyvCommand {
                     return;
                 } else {
                     ParkourTickListener.landingBlock = new LandingBlock(pos, mode, axis, box);
-                    CyvForge.sendChatMessage("Successfully set landing block.");
+                    ParkourTickListener.landingBlock.ignoreWallHit = ignoreWall;
+                    if (!ParkourTickListener.landingBlock.announceLowBlock("landing block")) CyvForge.sendChatMessage("Successfully set landing block.");
                 }
 
             } else {
@@ -125,6 +130,6 @@ public class CommandSetlb extends CyvCommand {
 
     @Override
     public List<String> getTabCompletions(String[] args) {
-        return java.util.Arrays.asList("target", "box", "hit", "enter", "x", "z", "zneo", "xneo", "tick", "ladder/vine", "slime/ice");
+        return java.util.Arrays.asList("target", "box", "hit", "enter", "x", "z", "zneo", "xneo", "tick", "ignorewall", "ladder/vine", "slime/ice");
     }
 }

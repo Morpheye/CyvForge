@@ -52,10 +52,10 @@ public class CommandSetbox extends CyvCommand {
             lb.zMinCond = minZ - 0.6;
             lb.zMaxCond = maxZ + 0.6;
 
-            lb.xMinWall = minX - 0.3;
-            lb.xMaxWall = maxX + 0.3;
-            lb.zMinWall = minZ - 0.3;
-            lb.zMaxWall = maxZ + 0.3;
+            lb.xMinWalls = new Double[]{minX - 0.3};
+            lb.xMaxWalls = new Double[]{maxX + 0.3};
+            lb.zMinWalls = new Double[]{minZ - 0.3};
+            lb.zMaxWalls = new Double[]{maxZ + 0.3};
 
         } catch (Exception e) {
             e.printStackTrace();

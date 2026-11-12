@@ -114,8 +114,10 @@ public class LandingBlockOffset {
         double halfPlayerSize = (playerBB.maxX - playerBB.minX) / 2;
         double fullPlayerSize = halfPlayerSize * 2;
 
-        double rightWallOffset = (b.xMinWall == null) ? 0 : (b.bb[i].minX - b.xMinWall) - fullPlayerSize;
-        double leftWallOffset = (b.xMaxWall == null) ? 0 : (b.xMaxWall - b.bb[i].maxX) - fullPlayerSize;
+        Double xMinWall = b.xMinWall(i); //walls of this box only
+        Double xMaxWall = b.xMaxWall(i);
+        double rightWallOffset = (xMinWall == null) ? 0 : (b.bb[i].minX - xMinWall) - fullPlayerSize;
+        double leftWallOffset = (xMaxWall == null) ? 0 : (xMaxWall - b.bb[i].maxX) - fullPlayerSize;
 
         if (rightWallOffset > 0) rightWallOffset = 0;
         if (leftWallOffset > 0) leftWallOffset = 0;
@@ -136,8 +138,10 @@ public class LandingBlockOffset {
         double halfPlayerSize = (playerBB.maxZ - playerBB.minZ) / 2;
         double fullPlayerSize = halfPlayerSize * 2;
 
-        double backWallOffset = (b.zMinWall == null) ? 0 : (b.bb[i].minZ - b.zMinWall) - fullPlayerSize;
-        double frontWallOffset = (b.zMaxWall == null) ? 0 : (b.zMaxWall - b.bb[i].maxZ) - fullPlayerSize;
+        Double zMinWall = b.zMinWall(i); //walls of this box only
+        Double zMaxWall = b.zMaxWall(i);
+        double backWallOffset = (zMinWall == null) ? 0 : (b.bb[i].minZ - zMinWall) - fullPlayerSize;
+        double frontWallOffset = (zMaxWall == null) ? 0 : (zMaxWall - b.bb[i].maxZ) - fullPlayerSize;
 
         if (backWallOffset > 0) backWallOffset = 0;
         if (frontWallOffset > 0) frontWallOffset = 0;

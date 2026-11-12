@@ -152,6 +152,7 @@ public class GuiModConfig extends CyvGui {
         PanelUtils.addToggle(panels, "highlightLanding", "Highlight Landing Blocks", this);
         PanelUtils.addToggle(panels, "highlightLandingCond", "Highlight Landing Conditions", this);
         PanelUtils.addToggle(panels, "momentumPbCancelling", "Momentum PB Cancelling", this);
+        PanelUtils.addToggle(panels, "lb3DPreview", "3D Landing Preview", this);
 
         // macro
         PanelUtils.addSpace(panels, this);

@@ -18,6 +18,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.BlockPos;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.storage.WorldInfo;
 import net.minecraftforge.client.event.MouseEvent;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
@@ -48,6 +50,9 @@ public class ParkourTickListener {
     public static int lastAirtime;
     public static double x = 0, y = 0, z = 0; //coords
     public static double vx = 0, vy = 0, vz = 0; //velocities
+
+    public static double uncollidedX = 0, uncollidedZ = 0;
+    private static double startMotionX = 0, startMotionZ = 0;
 
     public static float f = 0, p = 0; //yaw and pitch
     public static float vf = 0, vp = 0; //last turnings
@@ -102,6 +107,9 @@ public class ParkourTickListener {
     private static boolean locked = false;
     private static boolean hasActed = false;
     private static boolean hasCollided = false;
+
+    private static boolean wHeldSinceJump = false;
+    private static boolean sprintHeldSinceJump = false;
 
     public static boolean[] getInferredKeys(Entity viewEntity) {
         Minecraft mc = Minecraft.getMinecraft();
@@ -170,6 +178,16 @@ public class ParkourTickListener {
     //end of tick
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
+        if (event.phase == TickEvent.Phase.START) {
+            Minecraft mc = Minecraft.getMinecraft();
+            Entity viewEntity = mc.getRenderViewEntity();
+            if (viewEntity != null) {
+                startMotionX = viewEntity.motionX;
+                startMotionZ = viewEntity.motionZ;
+            }
+            return;
+        }
+
         if (event.phase != TickEvent.Phase.END) return;
 
         Minecraft mc = Minecraft.getMinecraft();
@@ -254,6 +272,57 @@ public class ParkourTickListener {
         }
 
         if (waterDetectionLockout > 0) waterDetectionLockout--;
+
+        // IgnoreWall Hit logic
+        double addedVx = 0.0D;
+        double addedVz = 0.0D;
+        boolean airborneState = (lastTick != null && !lastTick.onGround);
+
+        if (airborneState) {
+            float accel = 0.02F;
+            if (Sprint) accel += accel * 0.3F;
+
+            float forward = moveForward;
+            float strafing = moveStrafe;
+
+            if (Sneak) {
+                forward = (float)((double)forward * 0.3D);
+                strafing = (float)((double)strafing * 0.3D);
+            }
+
+            forward *= 0.98F;
+            strafing *= 0.98F;
+
+            float dist = strafing * strafing + forward * forward;
+            if (dist >= 1.0E-4F) {
+                dist = MathHelper.sqrt_float(dist);
+                if (dist < 1.0F) dist = 1.0F;
+                dist = accel / dist;
+                strafing *= dist;
+                forward *= dist;
+
+                float angle = (float)(viewEntity.rotationYaw * Math.PI / 180.0D);
+                addedVx = (double)(strafing * MathHelper.cos(angle) - forward * MathHelper.sin(angle));
+                addedVz = (double)(forward * MathHelper.cos(angle) + strafing * MathHelper.sin(angle));
+            }
+        } else if (airtime == 1 && Space) {
+            if (Sprint) {
+                float angle = (float)(viewEntity.rotationYaw * 0.017453292F);
+                addedVx -= (double)(MathHelper.sin(angle) * 0.2F);
+                addedVz += (double)(MathHelper.cos(angle) * 0.2F);
+            }
+        }
+
+        double intendedVx = startMotionX + addedVx;
+        double intendedVz = startMotionZ + addedVz;
+
+        if (lastTick != null) {
+            uncollidedX = lastTick.x + intendedVx;
+            uncollidedZ = lastTick.z + intendedVz;
+        } else {
+            uncollidedX = viewEntity.posX;
+            uncollidedZ = viewEntity.posZ;
+        }
 
         if (lastTick != null) {
             boolean isFlying = false;
@@ -350,11 +419,18 @@ public class ParkourTickListener {
         if (landingBlock != null) { //must be lower than the landing to check it
             landingBlock.calculateWalls();
 
+            double curEvalX = landingBlock.ignoreWallHit ? uncollidedX : x;
+            double curEvalZ = landingBlock.ignoreWallHit ? uncollidedZ : z;
+            double lastEvalX = (landingBlock.ignoreWallHit && lastTick != null) ? lastTick.uncollidedX : (lastTick != null ? lastTick.x : x);
+            double lastEvalZ = (landingBlock.ignoreWallHit && lastTick != null) ? lastTick.uncollidedZ : (lastTick != null ? lastTick.z : z);
+            double secondLastEvalX = (landingBlock.ignoreWallHit && secondLastTick != null) ? secondLastTick.uncollidedX : (secondLastTick != null ? secondLastTick.x : lastEvalX);
+            double secondLastEvalZ = (landingBlock.ignoreWallHit && secondLastTick != null) ? secondLastTick.uncollidedZ : (secondLastTick != null ? secondLastTick.z : lastEvalZ);
+
             if (landingBlock.targetTick != -1) {
                 if (airtime == landingBlock.targetTick && !positionCheckedThisJump) {
                     LandingBlockOffset.refreshPb();
 
-                    LandingBlockOffset.check(x, y, z, x + vx, y + vy, z + vz, lastTick.x, lastTick.y, lastTick.z, landingBlock, 0);
+                    LandingBlockOffset.check(curEvalX, y, curEvalZ, curEvalX + vx, y + vy, curEvalZ + vz, lastEvalX, lastTick.y, lastEvalZ, landingBlock, 0);
 
                     LandingBlockOffset.finalizePb(landingBlock);
                     positionCheckedThisJump = true;
@@ -362,13 +438,13 @@ public class ParkourTickListener {
             } else if (landingBlock.isLiquid) {
                 double d = 0.7;
                 double bottomOffset = landingBlock.liquidBottomOffset;
-                boolean inZone = (x >= landingBlock.pos.getX() - d && x <= landingBlock.pos.getX() + 1 + d) &&
+                boolean inZone = (curEvalX >= landingBlock.pos.getX() - d && curEvalX <= landingBlock.pos.getX() + 1 + d) &&
                         (y >= landingBlock.pos.getY() - d - bottomOffset && y <= landingBlock.pos.getY() + 1 + d) &&
-                        (z >= landingBlock.pos.getZ() - d && z <= landingBlock.pos.getZ() + 1 + d);
+                        (curEvalZ >= landingBlock.pos.getZ() - d && curEvalZ <= landingBlock.pos.getZ() + 1 + d);
 
                 if (inZone && !viewEntity.onGround && !positionCheckedThisJump && waterDetectionLockout == 0) {
                     LandingBlockOffset.refreshPb();
-                    LandingBlockOffset.check(x, y, z, x + vx, y + vy, z + vz, lastTick.x, lastTick.y, lastTick.z, landingBlock, 0);
+                    LandingBlockOffset.check(curEvalX, y, curEvalZ, curEvalX + vx, y + vy, curEvalZ + vz, lastEvalX, lastTick.y, lastEvalZ, landingBlock, 0);
 
                     LandingBlockOffset.finalizePb(landingBlock);
                     if (landingBlock.lastPb != null && landingBlock.lastPb >= 0) {
@@ -385,11 +461,11 @@ public class ParkourTickListener {
 
                         if (vy < 0 && airtime > 1) {
                             if (landingBlock.mode.equals(LandingMode.hit) || landingBlock.mode.equals(LandingMode.enter)) {
-                                LandingBlockOffset.check(x, y, z, lastTick.x,
-                                        lastTick.y, lastTick.z, x, y, z, landingBlock, i);
+                                LandingBlockOffset.check(curEvalX, y, curEvalZ, lastEvalX,
+                                        lastTick.y, lastEvalZ, curEvalX, y, curEvalZ, landingBlock, i);
                             } else {
-                                LandingBlockOffset.check(lastTick.x, lastTick.y, lastTick.z, secondLastTick.x,
-                                        secondLastTick.y, secondLastTick.z, x, y, z, landingBlock, i);
+                                LandingBlockOffset.check(lastEvalX, lastTick.y, lastEvalZ, secondLastEvalX,
+                                        secondLastTick.y, secondLastEvalZ, curEvalX, y, curEvalZ, landingBlock, i);
                             }
                         }
                     }
@@ -402,11 +478,18 @@ public class ParkourTickListener {
         if (momentumBlock != null) { //must be lower than the landing to check it
             momentumBlock.calculateWalls();
 
+            double curEvalX = momentumBlock.ignoreWallHit ? uncollidedX : x;
+            double curEvalZ = momentumBlock.ignoreWallHit ? uncollidedZ : z;
+            double lastEvalX = (momentumBlock.ignoreWallHit && lastTick != null) ? lastTick.uncollidedX : (lastTick != null ? lastTick.x : x);
+            double lastEvalZ = (momentumBlock.ignoreWallHit && lastTick != null) ? lastTick.uncollidedZ : (lastTick != null ? lastTick.z : z);
+            double secondLastEvalX = (momentumBlock.ignoreWallHit && secondLastTick != null) ? secondLastTick.uncollidedX : (secondLastTick != null ? secondLastTick.x : lastEvalX);
+            double secondLastEvalZ = (momentumBlock.ignoreWallHit && secondLastTick != null) ? secondLastTick.uncollidedZ : (secondLastTick != null ? secondLastTick.z : lastEvalZ);
+
             if (momentumBlock.targetTick != -1) {
                 if (airtime == momentumBlock.targetTick && !positionCheckedThisJump) {
                     LandingBlockOffset.refreshPb();
 
-                    LandingBlockOffset.check(x, y, z, x + vx, y + vy, z + vz, lastTick.x, lastTick.y, lastTick.z, momentumBlock, 0);
+                    LandingBlockOffset.check(curEvalX, y, curEvalZ, curEvalX + vx, y + vy, curEvalZ + vz, lastEvalX, lastTick.y, lastEvalZ, momentumBlock, 0);
 
                     LandingBlockOffset.finalizePb(momentumBlock);
                     positionCheckedThisJump = true;
@@ -414,13 +497,13 @@ public class ParkourTickListener {
             } else if (momentumBlock.isLiquid) {
                 double d = 0.7;
                 double bottomOffset = momentumBlock.liquidBottomOffset;
-                boolean inZone = (x >= momentumBlock.pos.getX() - d && x <= momentumBlock.pos.getX() + 1 + d) &&
+                boolean inZone = (curEvalX >= momentumBlock.pos.getX() - d && curEvalX <= momentumBlock.pos.getX() + 1 + d) &&
                         (y >= momentumBlock.pos.getY() - d - bottomOffset  && y <= momentumBlock.pos.getY() + 1 + d) &&
-                        (z >= momentumBlock.pos.getZ() - d && z <= momentumBlock.pos.getZ() + 1 + d);
+                        (curEvalZ >= momentumBlock.pos.getZ() - d && curEvalZ <= momentumBlock.pos.getZ() + 1 + d);
 
                 if (inZone && !viewEntity.onGround  && !positionCheckedThisJump && waterDetectionLockout == 0) {
                     LandingBlockOffset.refreshPb();
-                    LandingBlockOffset.check(x, y, z, x + vx, y + vy, z + vz, lastTick.x, lastTick.y, lastTick.z, momentumBlock, 0);
+                    LandingBlockOffset.check(curEvalX, y, curEvalZ, curEvalX + vx, y + vy, curEvalZ + vz, lastEvalX, lastTick.y, lastEvalZ, momentumBlock, 0);
 
                     LandingBlockOffset.finalizePb(momentumBlock);
                     if (momentumBlock.lastPb != null && momentumBlock.lastPb >= 0) {
@@ -437,11 +520,11 @@ public class ParkourTickListener {
 
                         if (vy < 0 && airtime > 1) {
                             if (momentumBlock.mode.equals(LandingMode.hit) || momentumBlock.mode.equals(LandingMode.enter)) {
-                                LandingBlockOffset.check(x, y, z, lastTick.x,
-                                        lastTick.y, lastTick.z, x, y, z, momentumBlock, i);
+                                LandingBlockOffset.check(curEvalX, y, curEvalZ, lastEvalX,
+                                        lastTick.y, lastEvalZ, curEvalX, y, curEvalZ, momentumBlock, i);
                             } else {
-                                LandingBlockOffset.check(lastTick.x, lastTick.y, lastTick.z, secondLastTick.x,
-                                        secondLastTick.y, secondLastTick.z, x, y, z, momentumBlock, i);
+                                LandingBlockOffset.check(lastEvalX, lastTick.y, lastEvalZ, secondLastEvalX,
+                                        secondLastTick.y, secondLastEvalZ, curEvalX, y, curEvalZ, momentumBlock, i);
                             }
                         }
                     }
@@ -457,6 +540,8 @@ public class ParkourTickListener {
         lastTick.true_vx = viewEntity.motionX;
         lastTick.true_vy = viewEntity.motionY;
         lastTick.true_vz = viewEntity.motionZ;
+        lastTick.uncollidedX = uncollidedX;
+        lastTick.uncollidedZ = uncollidedZ;
         lastTick.hasCollidedHorizontally = viewEntity.isCollidedHorizontally;
         if (lastTick.onGround) {
             if (airtime != 0) lastAirtime = airtime;
@@ -546,6 +631,7 @@ public class ParkourTickListener {
 
     private static void calculateLastTiming(Entity viewEntity, boolean W, boolean A, boolean S, boolean D, boolean Space, boolean Sprint, boolean Sneak, float moveStrafe) {
         boolean showMS = CyvClientConfig.getBoolean("showMilliseconds", true);
+        boolean keepUpdating = CyvClientConfig.getBoolean("timingActiveUpdates", false);
 
         if (W || S || A || D) {
             lastMoveTime++;
@@ -553,8 +639,13 @@ public class ParkourTickListener {
             hasActed = true;
 
             //already jumped, started moving
-            if (lastJumpTime > -1 && lastMoveTime == 0 && airtime != 0 && !(vy == 0 && lastTick.onGround)
-                    && (lastTiming.contains("Pessi") || !locked)) {
+            boolean inAirAfterJump = lastJumpTime > -1 && airtime != 0 && !(vy == 0 && lastTick.onGround);
+            boolean pessi = inAirAfterJump && lastMoveTime == 0 && (lastTiming.contains("Pessi") || !locked);
+
+            boolean pessiAfterOtherKey = keepUpdating && inAirAfterJump && W && !lastTick.keys[0] && !wHeldSinceJump
+                    && !(lastTick.keys[1] || lastTick.keys[3]);
+
+            if (pessi || pessiAfterOtherKey) {
                 if ((lastJumpTime+1) == 1) lastTiming = "Max Pessi";
                 else lastTiming = "Pessi " + (lastJumpTime+1) + " ticks";
                 long diff = Math.abs(moveTimestamp - jumpTimestamp) / 1000000;
@@ -578,6 +669,8 @@ public class ParkourTickListener {
         if (Space && airtime == 0) {
             lastJumpTime = 0;
             hasActed = true;
+            wHeldSinceJump = W;
+            sprintHeldSinceJump = Sprint;
 
             //already jumped, started moving
             if ((lastGroundMoveTime == 0 || lastMoveTime == 0) && !locked) {
@@ -625,7 +718,12 @@ public class ParkourTickListener {
 
         if ((Sprint || lastSprintTime != -1) && !lastTick.onGround ) {
             lastSprintTime++;
-            if (lastTiming.startsWith("Jam") && lastSprintTime == 0 && !locked && lastTick.keys[0]) {
+            boolean fmmClassic = lastTiming.startsWith("Jam") && lastSprintTime == 0 && !locked && lastTick.keys[0];
+
+            boolean fmmKeepUpdating = keepUpdating && Sprint && !sprintHeldSinceJump && lastTick.keys[0]
+                    && (lastTiming.startsWith("Jam") || lastTiming.contains("Pessi"));
+
+            if (fmmClassic || fmmKeepUpdating) {
                 if (lastJumpTime < 1) {
                 } else {
                     if (lastJumpTime == 1) lastTiming = "Max FMM";
@@ -730,6 +828,11 @@ public class ParkourTickListener {
 
         }
 
+        if (airtime > 0) {
+            if (W) wHeldSinceJump = true;
+            if (Sprint) sprintHeldSinceJump = true;
+        }
+
         //overflow prevention
         if (lastJumpTime > 999) lastJumpTime = 999;
         if (lastGroundMoveTime > 999) lastGroundMoveTime = 999;
@@ -759,6 +862,8 @@ public class ParkourTickListener {
             this.onGround = player.onGround;
             this.airtime = airtime;
             this.keys = keys;
+            this.uncollidedX = player.posX;
+            this.uncollidedZ = player.posZ;
         }
 
         public PosTick(double x, double y, double z, int airtime, boolean[] keys) {
@@ -773,6 +878,8 @@ public class ParkourTickListener {
             this.onGround = true;
             this.airtime = airtime;
             this.keys = keys;
+            this.uncollidedX = x;
+            this.uncollidedZ = z;
         }
 
         public PosTick(double x, double y, double z, float yaw, float pitch, double motionX, double motionY,
@@ -788,6 +895,8 @@ public class ParkourTickListener {
             this.onGround = onGround;
             this.airtime = airtime;
             this.keys = keys;
+            this.uncollidedX = x;
+            this.uncollidedZ = z;
         }
 
 
@@ -804,6 +913,7 @@ public class ParkourTickListener {
         public double vz;
 
         public double true_vx, true_vy, true_vz;
+        public double uncollidedX, uncollidedZ;
 
         public boolean onGround;
         public int airtime;
@@ -909,20 +1019,21 @@ public class ParkourTickListener {
 
         if (CyvClientConfig.getBoolean("highlightLanding", false)) {
             if (landingBlock != null) {
-                for (AxisAlignedBB bb : landingBlock.bb) {
+                for (int boxIndex = 0; boxIndex < landingBlock.bb.length; boxIndex++) {
+                    AxisAlignedBB bb = landingBlock.bb[boxIndex];
                     double rMinX = bb.minX;
                     double rMaxX = bb.maxX;
                     double rMinZ = bb.minZ;
                     double rMaxZ = bb.maxZ;
 
                     if ((bb.maxX - bb.minX) > 0.35) {
-                        if (landingBlock.xMinWall != null) rMinX = Math.max(bb.minX, landingBlock.xMinWall + 0.3);
-                        if (landingBlock.xMaxWall != null) rMaxX = Math.min(bb.maxX, landingBlock.xMaxWall - 0.3);
+                        if (landingBlock.xMinWall(boxIndex) != null) rMinX = Math.max(bb.minX, landingBlock.xMinWall(boxIndex) + 0.3);
+                        if (landingBlock.xMaxWall(boxIndex) != null) rMaxX = Math.min(bb.maxX, landingBlock.xMaxWall(boxIndex) - 0.3);
                     }
 
                     if ((bb.maxZ - bb.minZ) > 0.35) {
-                        if (landingBlock.zMinWall != null) rMinZ = Math.max(bb.minZ, landingBlock.zMinWall + 0.3);
-                        if (landingBlock.zMaxWall != null) rMaxZ = Math.min(bb.maxZ, landingBlock.zMaxWall - 0.3);
+                        if (landingBlock.zMinWall(boxIndex) != null) rMinZ = Math.max(bb.minZ, landingBlock.zMinWall(boxIndex) + 0.3);
+                        if (landingBlock.zMaxWall(boxIndex) != null) rMaxZ = Math.min(bb.maxZ, landingBlock.zMaxWall(boxIndex) - 0.3);
                     }
 
                     if (rMinX >= rMaxX || rMinZ >= rMaxZ) {
@@ -939,20 +1050,21 @@ public class ParkourTickListener {
             }
 
             if (momentumBlock != null) {
-                for (AxisAlignedBB bb : momentumBlock.bb) {
+                for (int boxIndex = 0; boxIndex < momentumBlock.bb.length; boxIndex++) {
+                    AxisAlignedBB bb = momentumBlock.bb[boxIndex];
                     double rMinX = bb.minX;
                     double rMaxX = bb.maxX;
                     double rMinZ = bb.minZ;
                     double rMaxZ = bb.maxZ;
 
                     if ((bb.maxX - bb.minX) > 0.35) {
-                        if (momentumBlock.xMinWall != null) rMinX = Math.max(bb.minX, momentumBlock.xMinWall + 0.3);
-                        if (momentumBlock.xMaxWall != null) rMaxX = Math.min(bb.maxX, momentumBlock.xMaxWall - 0.3);
+                        if (momentumBlock.xMinWall(boxIndex) != null) rMinX = Math.max(bb.minX, momentumBlock.xMinWall(boxIndex) + 0.3);
+                        if (momentumBlock.xMaxWall(boxIndex) != null) rMaxX = Math.min(bb.maxX, momentumBlock.xMaxWall(boxIndex) - 0.3);
                     }
 
                     if ((bb.maxZ - bb.minZ) > 0.35) {
-                        if (momentumBlock.zMinWall != null) rMinZ = Math.max(bb.minZ, momentumBlock.zMinWall + 0.3);
-                        if (momentumBlock.zMaxWall != null) rMaxZ = Math.min(bb.maxZ, momentumBlock.zMaxWall - 0.3);
+                        if (momentumBlock.zMinWall(boxIndex) != null) rMinZ = Math.max(bb.minZ, momentumBlock.zMinWall(boxIndex) + 0.3);
+                        if (momentumBlock.zMaxWall(boxIndex) != null) rMaxZ = Math.min(bb.maxZ, momentumBlock.zMaxWall(boxIndex) - 0.3);
                     }
 
                     if (rMinX >= rMaxX || rMinZ >= rMaxZ) {
@@ -995,6 +1107,12 @@ public class ParkourTickListener {
             lastWaitTime = 0;
             lastRunTime = 0;
             hasInputtedSinceReset = false;
+
+            Minecraft mc = Minecraft.getMinecraft();
+            if (mc.thePlayer != null) {
+                uncollidedX = mc.thePlayer.posX;
+                uncollidedZ = mc.thePlayer.posZ;
+            }
 
             if (CyvClientConfig.getBoolean("antiCP", false)) {
 

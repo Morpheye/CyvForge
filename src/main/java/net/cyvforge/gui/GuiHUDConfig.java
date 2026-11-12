@@ -23,8 +23,9 @@ public class GuiHUDConfig {
                 PanelUtils.addToggle(panels, "showMilliseconds", "Show Milliseconds", screen);
                 PanelUtils.addToggle(panels, "detectWobble", "Wobble Timing", screen);
                 PanelUtils.addToggle(panels, "detectStrafejam", "Strafejam Timing", screen);
-                PanelUtils.addDependantToggle(panels, "strafejamJamOnly", "- Strafejam Jam only", "detectStrafejam", screen);
+                PanelUtils.addDependantToggle(panels, "strafejamJamOnly", "- Strafejam Jam Only", "detectStrafejam", screen);
                 PanelUtils.addSwitcher(panels, "markDisplay", "Mark Display", new String[] {"Sidestep", "Timing"}, screen);
+                PanelUtils.addToggle(panels, "timingActiveUpdates", "Actively Update the Timing", screen);
                 break;
 
             case "labelLastSidestep":

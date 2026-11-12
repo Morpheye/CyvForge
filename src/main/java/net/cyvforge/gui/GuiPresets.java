@@ -38,6 +38,8 @@ public class GuiPresets extends CyvGui {
     public enum PresetType { HUD, KEYBINDS }
     public static PresetType currentTab = PresetType.HUD;
 
+    private static boolean migrated = false;
+
     public static class KeybindPreset {
         public String presetName;
         public Map<String, Integer> keybinds = new HashMap<>();
@@ -45,21 +47,85 @@ public class GuiPresets extends CyvGui {
         public KeybindPreset(String name) { this.presetName = name; }
     }
 
+    public static synchronized void ensureDirectories() {
+        if (migrated) return;
+        migrated = true;
+
+        File baseDir = new File(Minecraft.getMinecraft().mcDataDir, "config/cyvforge");
+        File oldHudDir = new File(baseDir, "presets");
+        File oldKbDir = new File(baseDir, "keybinds");
+
+        File newHudDir = new File(oldHudDir, "configs");
+        File newKbDir = new File(oldHudDir, "keybinds");
+
+        if (!newHudDir.exists()) newHudDir.mkdirs();
+        if (!newKbDir.exists()) newKbDir.mkdirs();
+
+        // Used when i needed to migrate existing files in the old directories to the new ones in 1.12
+        if (oldHudDir.exists() && oldHudDir.isDirectory()) {
+            File[] files = oldHudDir.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    if (f.isFile() && (f.getName().endsWith(".json") || f.getName().endsWith(".cfg"))) {
+                        try {
+                            Files.move(f.toPath(), new File(newHudDir, f.getName()).toPath(), StandardCopyOption.REPLACE_EXISTING);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+        }
+
+        if (oldKbDir.exists() && oldKbDir.isDirectory()) {
+            File[] files = oldKbDir.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    if (f.isFile()) {
+                        try {
+                            Files.move(f.toPath(), new File(newKbDir, f.getName()).toPath(), StandardCopyOption.REPLACE_EXISTING);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+            try {
+                if (oldKbDir.list() == null || oldKbDir.list().length == 0) {
+                    oldKbDir.delete();
+                }
+            } catch (Exception ignored) {}
+        }
+    }
+
+    public static File getHudPresetDir() {
+        ensureDirectories();
+        File dir = new File(Minecraft.getMinecraft().mcDataDir, "config/cyvforge/presets/configs");
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+    //
+
+    public static File getKbPresetDir() {
+        ensureDirectories();
+        File dir = new File(Minecraft.getMinecraft().mcDataDir, "config/cyvforge/presets/keybinds");
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
     public GuiPresets() {
         super("HUD & Keybind Presets");
-        this.hudPresetDir = new File(mc.mcDataDir, "config/cyvforge/presets");
-        this.kbPresetDir = new File(mc.mcDataDir, "config/cyvforge/keybinds");
-        if (!hudPresetDir.exists()) hudPresetDir.mkdirs();
-        if (!kbPresetDir.exists()) kbPresetDir.mkdirs();
+        this.hudPresetDir = getHudPresetDir();
+        this.kbPresetDir = getKbPresetDir();
     }
 
     private static File getKbSelFile() {
-        return new File(new File(Minecraft.getMinecraft().mcDataDir, "config/cyvforge/keybinds"), ".selected");
+        return new File(getKbPresetDir(), ".selected");
     }
 
     private static File getHUDConfigFile(String presetName) {
         String name = presetName.endsWith(".json") ? presetName.substring(0, presetName.length() - 5) + ".cfg" : presetName + ".cfg";
-        return new File(new File(Minecraft.getMinecraft().mcDataDir, "config/cyvforge/presets"), name);
+        return new File(getHudPresetDir(), name);
     }
 
     private static void saveHUDConfig(String presetName) {
@@ -280,7 +346,7 @@ public class GuiPresets extends CyvGui {
     public static void saveCurrentLayoutToSelected() {
         String sel = getSelectedName(PresetType.HUD);
         if (sel.equals("none") || sel.isEmpty()) return;
-        File f = new File(new File(Minecraft.getMinecraft().mcDataDir, "config/cyvforge/presets"), sel);
+        File f = new File(getHudPresetDir(), sel);
         if (!f.exists()) return;
 
         JsonObject data = readHUDData(f, sel.replace(".json", ""));
@@ -298,7 +364,7 @@ public class GuiPresets extends CyvGui {
     public static void saveCurrentKeybindsToSelected() {
         String sel = getSelectedName(PresetType.KEYBINDS);
         if (sel.equals("none") || sel.isEmpty()) return;
-        File f = new File(new File(Minecraft.getMinecraft().mcDataDir, "config/cyvforge/keybinds"), sel);
+        File f = new File(getKbPresetDir(), sel);
         if (!f.isFile()) return;
 
         KeybindPreset p = new KeybindPreset(sel.replace(".json", ""));

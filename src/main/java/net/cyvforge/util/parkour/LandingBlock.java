@@ -1,6 +1,7 @@
 package net.cyvforge.util.parkour;
 
 import net.cyvforge.CyvForge;
+import net.cyvforge.config.CyvClientConfig;
 import net.minecraft.block.*;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
@@ -19,9 +20,12 @@ public class LandingBlock {
     public LandingAxis axis;
     public boolean isBox;
     public boolean neoAndNormal;
+    public boolean ignoreWallHit = false;
     public boolean isLiquid = false;
     public double liquidBottomOffset = 0;
     public int targetTick = -1;
+    public double lowBlockHeight = 0;
+    private String supportName = "";
 
     public Double pb;
     public Double pbX;
@@ -31,7 +35,7 @@ public class LandingBlock {
     public Double lastOffsetZ;
     public Double lastPb;
 
-    public Double xMaxWall, xMinWall, zMaxWall, zMinWall;
+    public Double[] xMinWalls, xMaxWalls, zMinWalls, zMaxWalls;
 
     public double xMinCond, xMaxCond, zMinCond, zMaxCond; //detection boxes (for offsets)
 
@@ -40,7 +44,9 @@ public class LandingBlock {
         this.mode = mode;
         this.axis = axis;
         this.isBox = isBox;
+        this.ignoreWallHit = CyvClientConfig.getBoolean("ignoreWallHit", false);
 
+        resolveBoxSupport();
         calculateBounds(); //calculate the hitbox
         calculateWalls();
 
@@ -56,6 +62,7 @@ public class LandingBlock {
         this.mode = LandingMode.landing;
         this.axis = LandingAxis.both;
         this.isBox = false;
+        this.ignoreWallHit = CyvClientConfig.getBoolean("ignoreWallHit", false);
 
         this.bb = new AxisAlignedBB[] {bounds};
 
@@ -106,7 +113,7 @@ public class LandingBlock {
             double playerX = playerHitbox.maxX - playerHitbox.minX;
             double playerZ = playerHitbox.maxZ - playerHitbox.minZ;
             AxisAlignedBB box = new AxisAlignedBB(playerX/2 + pos.getX(), pos.getY() - 0.02, playerZ/2 + pos.getZ(),
-                    1-playerX/2 + pos.getX(), 1 + pos.getY(), 1-playerZ/2 + pos.getZ());
+                    1-playerX/2 + pos.getX(), 1 + pos.getY() + lowBlockHeight, 1-playerZ/2 + pos.getZ());
             this.bb = new AxisAlignedBB[] {box};
 
             return;
@@ -114,6 +121,64 @@ public class LandingBlock {
 
         this.bb = CyvForge.getHitbox(pos, world).toArray(new AxisAlignedBB[0]);
 
+    }
+
+    private void resolveBoxSupport() {
+        lowBlockHeight = 0;
+        if (!isBox || mode == LandingMode.enter || pos == null) return;
+
+        World world = Minecraft.getMinecraft().theWorld;
+        if (world == null) return;
+
+        BlockPos supportPos;
+        if (isBoxSupport(world.getBlockState(pos).getBlock())) supportPos = pos; //the slime/ice itself
+        else if (isBoxSupport(world.getBlockState(pos.down()).getBlock())) supportPos = pos.down(); //the thin block lying on it
+        else return;
+
+        double height = thinBlockHeight(world, supportPos);
+        if (height <= 0) return;
+
+        pos = supportPos;
+        lowBlockHeight = height;
+        supportName = supportName(world.getBlockState(supportPos).getBlock());
+    }
+
+    private static String supportName(Block block) {
+        if (block instanceof BlockSlime) return "slime";
+        if (block instanceof BlockPackedIce) return "packed ice";
+        return "ice";
+    }
+
+    private static boolean isBoxSupport(Block block) {
+        return block instanceof BlockSlime || block instanceof BlockIce || block instanceof BlockPackedIce;
+    }
+
+    private static double thinBlockHeight(World world, BlockPos supportPos) {
+        BlockPos abovePos = supportPos.up();
+        List<AxisAlignedBB> boxes = CyvForge.getHitbox(abovePos, world);
+        if (boxes == null || boxes.isEmpty()) return 0;
+
+        double base = supportPos.getY() + 1; //top of the slime/ice
+        double top = base;
+        for (AxisAlignedBB b : boxes) top = Math.max(top, b.maxY);
+
+        double height = top - base;
+        if (height <= 0 || height >= 1.0) return 0;
+
+        double eps = 1.0E-4;
+        for (AxisAlignedBB b : boxes) { //the highest box has to span the whole block
+            if (b.maxY >= top - eps
+                    && b.minX <= abovePos.getX() + eps && b.maxX >= abovePos.getX() + 1 - eps
+                    && b.minZ <= abovePos.getZ() + eps && b.maxZ >= abovePos.getZ() + 1 - eps) return height;
+        }
+        return 0;
+    }
+
+    public boolean announceLowBlock(String blockName) {
+        if (lowBlockHeight <= 0) return false;
+
+        CyvForge.sendChatMessage("Successfully set a " + blockName + " on the " + supportName + " below");
+        return true;
     }
 
     public double smallestX() {
@@ -185,20 +250,34 @@ public class LandingBlock {
 
     }
 
+    public Double xMinWall(int i) { return wallAt(xMinWalls, i); }
+    public Double xMaxWall(int i) { return wallAt(xMaxWalls, i); }
+    public Double zMinWall(int i) { return wallAt(zMinWalls, i); }
+    public Double zMaxWall(int i) { return wallAt(zMaxWalls, i); }
+
+    private static Double wallAt(Double[] walls, int i) {
+        return (walls != null && i >= 0 && i < walls.length) ? walls[i] : null;
+    }
+
     public void calculateWalls() {
         World world = Minecraft.getMinecraft().theWorld;
-        if (world == null) return;
+        if (world == null || bb == null) return;
         AxisAlignedBB playerHitbox = Minecraft.getMinecraft().thePlayer.getEntityBoundingBox();
         BlockPos tempPos = pos;
         if (this.mode == LandingMode.enter) tempPos = tempPos.down();
-
-        xMinWall = null; xMaxWall = null; zMinWall = null; zMaxWall = null;
 
         double playerHeight = playerHitbox.maxY - playerHitbox.minY;
         double playerWidthX = playerHitbox.maxX - playerHitbox.minX;
         double playerWidthZ = playerHitbox.maxZ - playerHitbox.minZ;
 
-        for (AxisAlignedBB box : bb) {
+        Double[] newXMinWalls = new Double[bb.length];
+        Double[] newXMaxWalls = new Double[bb.length];
+        Double[] newZMinWalls = new Double[bb.length];
+        Double[] newZMaxWalls = new Double[bb.length];
+
+        for (int i = 0; i < bb.length; i++) {
+            AxisAlignedBB box = bb[i];
+            Double xMin = null, xMax = null, zMin = null, zMax = null; //walls of THIS box only
             ArrayList<AxisAlignedBB> wallBoxes = new ArrayList<AxisAlignedBB>();
             BlockPos currentWallPos = null;
             double offset, currentWall;
@@ -221,7 +300,7 @@ public class LandingBlock {
             }
 
             for (AxisAlignedBB wall : wallBoxes) {
-                if ((wall.maxX - wall.minX) < (box.maxX - box.minX) - 0.01) continue;
+                if (wall.minX > box.minX + 0.01 || wall.maxX < box.maxX - 0.01) continue;
                 if (wall.minX < box.minX - 0.1 && wall.maxX > box.maxX + 0.1 && (wall.maxZ - wall.minZ) < 0.5) continue;
                 if (wall.maxY <= box.maxY) continue;
                 if (wall.minY >= box.maxY + playerHeight) continue;
@@ -230,7 +309,7 @@ public class LandingBlock {
                 offset = box.minZ - currentWall - playerWidthZ;
 
                 if (offset < 0) {
-                    if (zMinWall == null || currentWall > zMinWall) zMinWall = currentWall;
+                    if (zMin == null || currentWall > zMin) zMin = currentWall;
                 }
             }
 
@@ -252,7 +331,7 @@ public class LandingBlock {
             }
 
             for (AxisAlignedBB wall : wallBoxes) {
-                if ((wall.maxX - wall.minX) < (box.maxX - box.minX) - 0.01) continue;
+                if (wall.minX > box.minX + 0.01 || wall.maxX < box.maxX - 0.01) continue;
                 if (wall.minX < box.minX - 0.1 && wall.maxX > box.maxX + 0.1 && (wall.maxZ - wall.minZ) < 0.5) continue;
                 if (wall.maxY <= box.maxY) continue;
                 if (wall.minY >= box.maxY + playerHeight) continue;
@@ -261,7 +340,7 @@ public class LandingBlock {
                 offset = currentWall - box.maxZ - playerWidthZ;
 
                 if (offset < 0) {
-                    if (zMaxWall == null || currentWall < zMaxWall) zMaxWall = currentWall;
+                    if (zMax == null || currentWall < zMax) zMax = currentWall;
                 }
             }
 
@@ -283,7 +362,7 @@ public class LandingBlock {
             }
 
             for (AxisAlignedBB wall : wallBoxes) {
-                if ((wall.maxZ - wall.minZ) < (box.maxZ - box.minZ) - 0.01) continue;
+                if (wall.minZ > box.minZ + 0.01 || wall.maxZ < box.maxZ - 0.01) continue;
                 if (wall.minZ < box.minZ - 0.1 && wall.maxZ > box.maxZ + 0.1 && (wall.maxX - wall.minX) < 0.5) continue;
                 if (wall.maxY <= box.maxY) continue;
                 if (wall.minY >= box.maxY + playerHeight) continue;
@@ -292,7 +371,7 @@ public class LandingBlock {
                 offset = box.minX - currentWall - playerWidthX;
 
                 if (offset < 0) {
-                    if (xMinWall == null || currentWall > xMinWall) xMinWall = currentWall;
+                    if (xMin == null || currentWall > xMin) xMin = currentWall;
                 }
             }
 
@@ -314,7 +393,7 @@ public class LandingBlock {
             }
 
             for (AxisAlignedBB wall : wallBoxes) {
-                if ((wall.maxZ - wall.minZ) < (box.maxZ - box.minZ) - 0.01) continue;
+                if (wall.minZ > box.minZ + 0.01 || wall.maxZ < box.maxZ - 0.01) continue;
                 if (wall.minZ < box.minZ - 0.1 && wall.maxZ > box.maxZ + 0.1 && (wall.maxX - wall.minX) < 0.5) continue;
                 if (wall.maxY <= box.maxY) continue;
                 if (wall.minY >= box.maxY + playerHeight) continue;
@@ -323,13 +402,23 @@ public class LandingBlock {
                 offset = currentWall - box.maxX - playerWidthX;
 
                 if (offset < 0) {
-                    if (xMaxWall == null || currentWall < xMaxWall) xMaxWall = currentWall;
+                    if (xMax == null || currentWall < xMax) xMax = currentWall;
                 }
             }
+
+            newXMinWalls[i] = xMin;
+            newXMaxWalls[i] = xMax;
+            newZMinWalls[i] = zMin;
+            newZMaxWalls[i] = zMax;
         }
+
+        this.xMinWalls = newXMinWalls;
+        this.xMaxWalls = newXMaxWalls;
+        this.zMinWalls = newZMinWalls;
+        this.zMaxWalls = newZMaxWalls;
     }
 
     public void resetWalls() {
-        xMinWall = null; xMaxWall = null; zMinWall = null; zMaxWall = null;
+        xMinWalls = null; xMaxWalls = null; zMinWalls = null; zMaxWalls = null;
     }
 }
